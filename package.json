@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "author": "william.bernting@teliacompany.com",
   "description": "",
+  "bugs": {
+    "url": "https://github.com/TeliaSweden/rush-select/issues"
+  },
+  "homepage": "https://github.com/TeliaSweden/rush-select#readme",
   "bin": {
     "rush-select": "index.js"
   },
