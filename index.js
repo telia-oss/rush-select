@@ -29,7 +29,7 @@ const { argv } = require('yargs')
 
 if (!argv.include && !argv.limit) {
   global.extraWarn =
-    'Too many scripts loaded, limiting to 8. See --help for how to fix.'
+    'Limiting maximum scripts shown to 8. See --help for how to fix.'
   argv.limit = 8
 }
 
