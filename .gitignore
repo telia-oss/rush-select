@@ -1,0 +1,7 @@
+node_modules
+
+# because it's a shared library we're developing
+pnpm-lock.yaml
+
+# library-specific
+.previous-answers.json

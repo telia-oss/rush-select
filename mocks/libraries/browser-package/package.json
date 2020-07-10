@@ -1,0 +1,6 @@
+{
+  "name": "browser-package",
+  "scripts": {
+    "build:watch": "echo hello!"
+  }
+}

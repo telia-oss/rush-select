@@ -1,0 +1,6 @@
+{
+  "name": "mfe-package",
+  "scripts": {
+    "build:watch": "echo hello!"
+  }
+}

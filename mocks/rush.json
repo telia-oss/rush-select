@@ -1,0 +1,20 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+  "projects": [
+    {
+      "packageName": "cli-package",
+      "projectFolder": "tooling/cli-package",
+      "reviewCategory": "tooling"
+    },
+    {
+      "packageName": "mfe-package",
+      "projectFolder": "micro-frontends/mfe-package",
+      "reviewCategory": "micro-frontends"
+    },
+    {
+      "packageName": "browser-package",
+      "projectFolder": "libraries/browser-package",
+      "reviewCategory": "libraries"
+    }
+  ]
+}

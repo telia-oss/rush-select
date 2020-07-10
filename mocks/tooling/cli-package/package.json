@@ -1,0 +1,6 @@
+{
+  "name": "cli-package",
+  "scripts": {
+    "build:watch": "echo hello!"
+  }
+}
