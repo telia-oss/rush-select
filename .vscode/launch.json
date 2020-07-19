@@ -21,6 +21,15 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug the prompt",
+      "cwd": "${workspaceFolder}/mocks",
+      "program": "${workspaceFolder}/index.js",
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest",
       "runtimeExecutable": "node",
       "cwd": "${fileDirname}",

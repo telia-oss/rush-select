@@ -4,10 +4,10 @@ const {
   replaceWithNotAvailable
 } = require('./string-utils')
 const colors = require('ansi-colors')
-const { Scale } = require('enquirer')
+const RushSelect = require('./prompt')
 
 module.exports = (choices, scriptsList) =>
-  new Scale({
+  new RushSelect({
     name: 'rush-select',
     message:
       (global.extraWarn ? global.extraWarn + '\n\n' : '') +

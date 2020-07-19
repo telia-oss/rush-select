@@ -72,18 +72,18 @@ let choices = projects
     )
   )
   .reduce((total = [], project) => {
-    if (
-      total.length === 0 ||
-      (total[total.length - 1] &&
-        total[total.length - 1]._reviewCategory !== project.reviewCategory)
-    ) {
-      // insert a fake separator to serve as a category for all the projects
-      total.push({
-        name: '# ' + project.reviewCategory.toUpperCase(),
-        _reviewCategory: project.reviewCategory,
-        disabled: true
-      })
-    }
+    // if (
+    //   total.length === 0 ||
+    //   (total[total.length - 1] &&
+    //     total[total.length - 1]._reviewCategory !== project.reviewCategory)
+    // ) {
+    //   // insert a fake separator to serve as a category for all the projects
+    //   total.push({
+    //     name: '# ' + project.reviewCategory.toUpperCase(),
+    //     _reviewCategory: project.reviewCategory,
+    //     disabled: true
+    //   })
+    // }
     // keep track of the scripts that were found
     if (project.packageJson.scripts) {
       Object.keys(project.packageJson.scripts).forEach((s) => tempSet.add(s))
@@ -97,6 +97,7 @@ let choices = projects
     total.push({
       name: '-   ' + project.packageName,
       _reviewCategory: project.reviewCategory,
+      category: project.reviewCategory,
       availableScripts,
       initial:
         previousAnswers &&

@@ -7,8 +7,13 @@
       "reviewCategory": "tooling"
     },
     {
-      "packageName": "mfe-package",
-      "projectFolder": "micro-frontends/mfe-package",
+      "packageName": "mfe-package-a",
+      "projectFolder": "micro-frontends/mfe-package-a",
+      "reviewCategory": "micro-frontends"
+    },
+    {
+      "packageName": "mfe-package-b",
+      "projectFolder": "micro-frontends/mfe-package-b",
       "reviewCategory": "micro-frontends"
     },
     {
