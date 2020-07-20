@@ -22,6 +22,11 @@ class RushSelect extends ArrayPrompt {
   async reset() {
     this.tableized = false
     await super.reset()
+
+    this.choices.forEach((choice) =>
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice)
+    )
+
     return this.render()
   }
 
@@ -59,17 +64,71 @@ class RushSelect extends ArrayPrompt {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
+  checkIfPackageScriptInstanceShouldBeAdded(choice) {
+    let anyIgnoresLeft = this.choices.some(
+      (ch) =>
+        ch.name === choice.name &&
+        (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
+    )
+
+    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
+      (ch) => ch.name === choice.name
+    ).length
+
+    if (
+      !anyIgnoresLeft &&
+      choiceCountDerivedFromCurrentPackage < choice.availableScripts.length
+    ) {
+      this.choices.splice(choice.index + 1, 0, {
+        ...choice,
+        index: choice.index + 1,
+        initial: 0,
+        scaleIndex: 0
+      })
+
+      this.choices.slice(choice.index + 2).forEach((ch) => ch.index++)
+    }
+  }
+
   right() {
     let choice = this.focused
+
     if (choice.scaleIndex >= this.scale.length - 1) return this.alert()
+
     choice.scaleIndex++
+
+    this.checkIfPackageScriptInstanceShouldBeAdded(choice)
+
     return this.render()
   }
 
   left() {
     let choice = this.focused
+
     if (choice.scaleIndex <= 0) return this.alert()
     choice.scaleIndex--
+
+    let wasActive = choice.scaleIndex === 0
+
+    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
+      (ch) => ch.name === choice.name
+    ).length
+
+    let ignoresLeft = this.choices.filter(
+      (ch) =>
+        ch.name === choice.name &&
+        (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
+    ).length
+
+    if (
+      wasActive &&
+      choiceCountDerivedFromCurrentPackage > 1 &&
+      ignoresLeft > 1
+    ) {
+      this.choices.splice(choice.index, 1)
+      this.index--
+    }
+
     return this.render()
   }
 
