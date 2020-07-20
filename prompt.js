@@ -32,7 +32,7 @@ class RushSelect extends ArrayPrompt {
 
     for (let ch of this.choices) {
       longest = Math.max(longest, ch.message.length)
-      ch.scaleIndex = ch.initial || 2
+      ch.scaleIndex = ch.initial || 0
       ch.scale = []
 
       for (let i = 0; i < this.scale.length; i++) {
@@ -269,6 +269,12 @@ class RushSelect extends ArrayPrompt {
       prompt = [prefix, message, separator, ''].join(' ')
       this.state.prompt = prompt
     }
+
+    this.visible.forEach((ch) => {
+      if (ch.scaleIndex === undefined) {
+        ch.scaleIndex = 1
+      }
+    })
 
     let header = await this.header()
     let output = await this.format()

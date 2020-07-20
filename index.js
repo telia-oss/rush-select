@@ -104,7 +104,7 @@ let choices = projects
         previousAnswers[project.packageName] &&
         scriptNameIsAllowed(previousAnswers[project.packageName])
           ? previousAnswers[project.packageName]
-          : -1
+          : 0
     })
     return total
   }, [])
@@ -115,7 +115,7 @@ let scriptsList = argv.include
 scriptsList.unshift('ignore')
 
 choices.forEach((choice) => {
-  if (choice.initial !== undefined && choice.initial !== -1) {
+  if (choice.initial !== undefined && choice.initial !== 0) {
     choice.initial = scriptsList.indexOf(choice.initial)
   }
 })
