@@ -4,4 +4,4 @@ node_modules
 pnpm-lock.yaml
 
 # library-specific
-.previous-answers.json
+.cached-answers.json

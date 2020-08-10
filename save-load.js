@@ -1,11 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 
-const answersFilePath = path.resolve(__dirname, '.previous-answers.json')
-const answersDefaultsFilePath = path.resolve(
-  __dirname,
-  '.previous-answers.defaults.json'
-)
+const answersFilePath = path.resolve(__dirname, '.cached-answers.json')
 
 module.exports = {
   save: (projectsToRun) => {
@@ -29,20 +25,19 @@ module.exports = {
     )
   },
   load: () => {
-    let previousAnswers = []
+    let cachedAnswers = []
 
     try {
-      previousAnswers = JSON.parse(fs.readFileSync(answersFilePath))
+      cachedAnswers = JSON.parse(fs.readFileSync(answersFilePath))
     } catch (e) {
       if (e.code === 'ENOENT') {
-        // file doesn't exist (aka no old answers exist), create it from the defaults
-        previousAnswers = JSON.parse(fs.readFileSync(answersDefaultsFilePath))
+        // no cached answers, that's ok.
       } else {
         // other unknown error, throw it
         throw e
       }
     }
 
-    return previousAnswers
+    return cachedAnswers
   }
 }
