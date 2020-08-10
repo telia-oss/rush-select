@@ -77,7 +77,7 @@ class RushSelect extends ArrayPrompt {
 
     if (
       !anyIgnoresLeft &&
-      choiceCountDerivedFromCurrentPackage < choice.availableScripts.length
+      choiceCountDerivedFromCurrentPackage < choice.availableScripts.length - 1
     ) {
       this.choices.splice(choice.index + 1, 0, {
         ...choice,
@@ -102,12 +102,7 @@ class RushSelect extends ArrayPrompt {
     return this.render()
   }
 
-  left() {
-    let choice = this.focused
-
-    if (choice.scaleIndex <= 0) return this.alert()
-    choice.scaleIndex--
-
+  checkIfPackageScriptInstanceShouldBeRemoved(choice) {
     let wasActive = choice.scaleIndex === 0
 
     const choiceCountDerivedFromCurrentPackage = this.choices.filter(
@@ -125,9 +120,26 @@ class RushSelect extends ArrayPrompt {
       choiceCountDerivedFromCurrentPackage > 1 &&
       ignoresLeft > 1
     ) {
+      let isFirstOccurrence =
+        this.choices.findIndex((ch) => ch.name === choice.name) === choice.index
+
       this.choices.splice(choice.index, 1)
-      this.index--
+
+      if (!isFirstOccurrence) {
+        // move cursor up one step since we're deleting where the cursor currently is
+        this.index--
+      }
+
+      this.choices.slice(choice.index).forEach((ch) => ch.index--)
     }
+  }
+
+  left() {
+    let choice = this.focused
+    if (choice.scaleIndex <= 0) return this.alert()
+    choice.scaleIndex--
+
+    this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
 
     return this.render()
   }
@@ -205,7 +217,7 @@ class RushSelect extends ArrayPrompt {
 
   /**
    * Render a category =>
-   *   "Bla"
+   *   "Libraries"
    */
 
   async renderCategory(categoryName) {
