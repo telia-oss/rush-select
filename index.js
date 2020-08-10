@@ -41,11 +41,10 @@ const {
   getRushRootDir
 } = require('./rush-utils')
 
-const previousAnswers = load()
+const savedProjectScripts = load()
 
 // scripts that should be executed with this prompt. Can be edited, shouldn't break anything
 // the order of the strings will be preserved in the prompt
-// const argv.include = ['ignore', 'build-watch', 'build-dev'];
 if (argv.include === undefined) {
   argv.include = null
 } else if (!Array.isArray(argv.include)) {
@@ -64,6 +63,7 @@ const scriptNameIsAllowed = (scriptName) =>
 
 let tempSet = new Set([])
 const projects = getProjectsAndRespectivePackageJson()
+
 let choices = projects
   // some projects may not have a single script that is allowed to run, so filter them out
   .filter((project) =>
@@ -72,39 +72,21 @@ let choices = projects
     )
   )
   .reduce((total = [], project) => {
-    // if (
-    //   total.length === 0 ||
-    //   (total[total.length - 1] &&
-    //     total[total.length - 1]._reviewCategory !== project.reviewCategory)
-    // ) {
-    //   // insert a fake separator to serve as a category for all the projects
-    //   total.push({
-    //     name: '# ' + project.reviewCategory.toUpperCase(),
-    //     _reviewCategory: project.reviewCategory,
-    //     disabled: true
-    //   })
-    // }
     // keep track of the scripts that were found
     if (project.packageJson.scripts) {
       Object.keys(project.packageJson.scripts).forEach((s) => tempSet.add(s))
     }
 
-    let availableScripts = ['ignore'].concat(
-      Object.keys(project.packageJson.scripts || []).filter(scriptNameIsAllowed)
-    )
+    let availableScripts = Object.keys(
+      project.packageJson.scripts || []
+    ).filter(scriptNameIsAllowed)
 
     // insert a project
     total.push({
-      name: '-   ' + project.packageName,
+      name: project.packageName,
       _reviewCategory: project.reviewCategory,
       category: project.reviewCategory,
-      availableScripts,
-      initial:
-        previousAnswers &&
-        previousAnswers[project.packageName] &&
-        scriptNameIsAllowed(previousAnswers[project.packageName])
-          ? previousAnswers[project.packageName]
-          : 0
+      availableScripts
     })
     return total
   }, [])
@@ -112,11 +94,37 @@ let choices = projects
 let scriptsList = argv.include
   ? argv.include.filter((a) => tempSet.has(a))
   : Array.from(tempSet)
-scriptsList.unshift('ignore')
 
-choices.forEach((choice) => {
-  if (choice.initial !== undefined && choice.initial !== 0) {
-    choice.initial = scriptsList.indexOf(choice.initial)
+// set the initial values, if possible
+let usedChoices = []
+savedProjectScripts.forEach((savedProjectScript) => {
+  let foundChoiceIndex = choices.findIndex(
+    (unusedChoice) => unusedChoice.name === savedProjectScript.packageName
+  )
+
+  if (foundChoiceIndex !== -1) {
+    let choiceInUse = usedChoices.some(
+      (usedChoice) => usedChoice === choices[foundChoiceIndex]
+    )
+
+    if (choiceInUse) {
+      // add another choice with the same project source, but different script
+      choices.splice(foundChoiceIndex, 0, {
+        ...choices[foundChoiceIndex]
+      })
+      foundChoiceIndex++
+    }
+
+    choices[foundChoiceIndex].initial = scriptNameIsAllowed(
+      savedProjectScript.script
+    )
+      ? choices[foundChoiceIndex].availableScripts.indexOf(
+          savedProjectScript.script
+        ) + 1
+      : 0
+
+    // mark as used
+    usedChoices.push(choices[foundChoiceIndex])
   }
 })
 
@@ -135,16 +143,15 @@ scriptsList.forEach((scriptName, index) => {
 
 module.exports = createPrompt(choices, scriptsList)
   .run()
-  .then((answers) => {
-    let projectsToRun = Object.keys(answers)
-      .map((projectOrCategoryName) => {
-        let script = scriptsList[answers[projectOrCategoryName]]
-        if (script === 'ignore' || script === undefined) {
+  .then((scriptsToRun) => {
+    scriptsToRun = scriptsToRun
+      .map(({ packageName, script }) => {
+        if (script === undefined) {
           // user specified ignore, or did not set anything at all
           return null
         }
 
-        let packageName = projectOrCategoryName.replace(/-\s*/, '')
+        // add in the rush package reference
         let pkg = projects.find((p) => p.packageName === packageName)
 
         if (pkg) {
@@ -159,28 +166,21 @@ module.exports = createPrompt(choices, scriptsList)
           return {
             package: pkg,
             packageName,
-            script
+            script: script
           }
         }
         return null
       })
       .filter((project) => project !== null)
 
-    let projectsToRunByName = {}
-    projectsToRun.forEach(({ packageName, script }) => {
-      projectsToRunByName[packageName] = script
-    })
+    save(scriptsToRun)
 
-    save(JSON.stringify(projectsToRunByName, undefined, 4))
-
-    projectsToRun.map((project) => {
+    scriptsToRun.map(({ packageName, script, package }) => {
       let p = spawnStreaming(
         'npm',
-        ['run', project.script],
-        { cwd: path.resolve(getRushRootDir(), project.package.projectFolder) },
-        (project.packageName + '->' + project.script)
-          .substr(0, 50)
-          .padEnd(50, ' ')
+        ['run', script],
+        { cwd: path.resolve(getRushRootDir(), package.projectFolder) },
+        (packageName + '->' + script).substr(0, 50).padEnd(50, ' ')
       )
 
       return p

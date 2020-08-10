@@ -8,15 +8,28 @@ const answersDefaultsFilePath = path.resolve(
 )
 
 module.exports = {
-  save: (projectsToRunByNameJson) => {
-    fs.writeFileSync(answersFilePath, projectsToRunByNameJson, (e) => {
-      if (e) {
-        throw e
-      }
+  save: (projectsToRun) => {
+    let projectsToRunByNameJsonFriendly = []
+
+    projectsToRun.forEach((project) => {
+      let jsonFriendly = { ...project }
+      delete jsonFriendly.package
+
+      projectsToRunByNameJsonFriendly.push(jsonFriendly)
     })
+
+    fs.writeFileSync(
+      answersFilePath,
+      JSON.stringify(projectsToRunByNameJsonFriendly, undefined, 4),
+      (e) => {
+        if (e) {
+          throw e
+        }
+      }
+    )
   },
   load: () => {
-    let previousAnswers = {}
+    let previousAnswers = []
 
     try {
       previousAnswers = JSON.parse(fs.readFileSync(answersFilePath))

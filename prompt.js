@@ -2,9 +2,22 @@ const colors = require('ansi-colors')
 const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 
+const {
+  wrapInSpaces,
+  replaceWithCharacter,
+  replaceWithNotAvailable
+} = require('./string-utils')
+
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
+    options.ignoreText = options.ignoreText || 'ignore'
+
+    options.scale.unshift({
+      name: options.ignoreText
+    })
+
     super(options)
+
     this.widths = [].concat(options.messageWidth || 50)
     this.align = [].concat(options.align || 'left')
     this.linebreak = options.linebreak || false
@@ -17,6 +30,14 @@ class RushSelect extends ArrayPrompt {
         .fill(0)
         .map((v, i) => ({ name: i + start }))
     }
+
+    this.choices.forEach((choice) => {
+      choice.availableScripts = [options.ignoreText].concat(
+        choice.availableScripts.filter(
+          (script) => script !== options.ignoreText
+        )
+      )
+    })
   }
 
   async reset() {
@@ -54,10 +75,6 @@ class RushSelect extends ArrayPrompt {
         : await super.dispatch(s, key)
     }
     this.alert()
-  }
-
-  heading(msg) {
-    return this.styles.strong(msg)
   }
 
   separator() {
@@ -174,35 +191,73 @@ class RushSelect extends ArrayPrompt {
   }
 
   /**
-   * Render the heading row for the scale.
-   * @return {String}
+   * Render a scale indicator => ignore  ─── build:watch  ─── build:prod
    */
 
-  renderScaleHeading(max) {
-    let keys = this.scale.map((ele) => ele.name)
-    if (typeof this.options.renderScaleHeading === 'function') {
-      keys = this.options.renderScaleHeading.call(this, max)
-    }
-    let diff = this.scaleLength - keys.join('').length
-    let spacing = Math.round(diff / (keys.length - 1))
-    let names = keys.map((key) => this.styles.strong(key))
-    let headings = names.join(' '.repeat(spacing))
-    let padding = ' '.repeat(this.widths[0])
-    return this.margin[3] + padding + this.margin[1] + headings
-  }
+  scaleIndicator(choice, item, rowIndex) {
+    let selectedRowIndex = this.index
 
-  /**
-   * Render a scale indicator => ◯ or ◉ by default
-   */
+    const optionName = this.scale[item.index].name
+    const isScriptAvailable = (optionName) =>
+      choice.availableScripts && choice.availableScripts.includes(optionName)
 
-  scaleIndicator(choice, item, i) {
-    if (typeof this.options.scaleIndicator === 'function') {
-      return this.options.scaleIndicator.call(this, choice, item, i)
+    let itemInRowIsSelected = choice.scaleIndex === item.index
+    let rowIsFocused = selectedRowIndex === rowIndex
+
+    const itemInRowIsDisabled = !isScriptAvailable(optionName)
+
+    const allRowItemsAreDisabled =
+      choice.availableScripts &&
+      choice.scale.every(
+        ({ index }) => !isScriptAvailable(this.scale[index].name)
+      )
+
+    if (allRowItemsAreDisabled) {
+      // all indexes are disabled, might as well make it unavailable
+      choice.disabled = true
     }
-    let enabled = choice.scaleIndex === item.index
-    if (item.disabled) return this.styles.hint(this.symbols.radio.disabled)
-    if (enabled) return this.styles.success(this.symbols.radio.on)
-    return this.symbols.radio.off
+
+    const rowIsDisabled = choice.disabled
+
+    if (rowIsDisabled && !allRowItemsAreDisabled) {
+      // this entire choice/row is disabled, which enquirer will ensure to skip selections
+      // used for the fake separators
+      return replaceWithCharacter(wrapInSpaces(optionName), '─')
+    } else if (rowIsDisabled && allRowItemsAreDisabled) {
+      // all options are unavailable
+      return this.styles.yellow(
+        wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
+      )
+    } else if (itemInRowIsDisabled) {
+      // this particular selection in the choice row is disabled
+      if (rowIsFocused && itemInRowIsSelected) {
+        return this.styles.strong(
+          this.styles.magenta(
+            wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
+          )
+        )
+      }
+      if (itemInRowIsSelected)
+        return this.styles.green(
+          wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
+        )
+      if (rowIsFocused)
+        return this.styles.strong(
+          wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
+        )
+      return this.styles.yellow(
+        wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
+      )
+    }
+
+    // row and item is available for selection
+    if (rowIsFocused && itemInRowIsSelected) {
+      return this.styles.strong(this.styles.magenta(wrapInSpaces(optionName)))
+    }
+    if (itemInRowIsSelected)
+      return this.styles.strong(this.styles.green(wrapInSpaces(optionName)))
+    if (rowIsFocused) return this.styles.white(wrapInSpaces(optionName))
+    return this.styles.strong(this.styles.dark(wrapInSpaces(optionName)))
   }
 
   /**
@@ -229,7 +284,7 @@ class RushSelect extends ArrayPrompt {
    *   "The website is easy to navigate. ◯───◯───◉───◯───◯"
    */
 
-  async renderChoice(choice, i) {
+  async renderChoice(choice, i, bulletIndentation = false) {
     await this.onChoice(choice, i)
 
     let focused = this.index === i
@@ -258,6 +313,9 @@ class RushSelect extends ArrayPrompt {
     if (focused) {
       scale = this.styles.info(scale)
       lines = lines.map((line) => this.styles.info(line))
+      lines[0] = bulletIndentation ? '- > ' + lines[0] : '> '
+    } else {
+      lines[0] = bulletIndentation ? '-   ' + lines[0] : lines[0]
     }
 
     lines[0] += scale
@@ -277,10 +335,7 @@ class RushSelect extends ArrayPrompt {
       async (ch, i) => await this.renderChoice(ch, i)
     )
     let visible = await Promise.all(choices)
-    let heading = await this.renderScaleHeading()
-    return (
-      this.margin[0] + [heading, ...visible.map((v) => v.join(' '))].join('\n')
-    )
+    return this.margin[0] + visible.map((v) => v.join(' ')).join('\n')
   }
 
   async renderChoicesAndCategories() {
@@ -307,7 +362,7 @@ class RushSelect extends ArrayPrompt {
     })
 
     let choicesAndCategories = visibles.map(async (ch, i) => {
-      let renderedChoice = await this.renderChoice(ch, i)
+      let renderedChoice = await this.renderChoice(ch, i, true)
 
       if (
         this.doesChoiceHaveCategory(ch) &&
@@ -324,8 +379,7 @@ class RushSelect extends ArrayPrompt {
     })
 
     let visible = (await Promise.all(choicesAndCategories)).flat().flat()
-    let heading = await this.renderScaleHeading()
-    return this.margin[0] + [heading, ...visible].join('\n')
+    return this.margin[0] + visible.join('\n')
   }
 
   async render() {
@@ -375,9 +429,14 @@ class RushSelect extends ArrayPrompt {
   }
 
   submit() {
-    this.value = {}
+    this.value = []
     for (let choice of this.choices) {
-      this.value[choice.name] = choice.scaleIndex
+      if (choice.availableScripts[choice.index] !== this.options.ignoreText) {
+        this.value.push({
+          packageName: choice.name,
+          script: choice.availableScripts[choice.index]
+        })
+      }
     }
     return this.base.submit.call(this)
   }
