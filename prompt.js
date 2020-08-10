@@ -32,6 +32,23 @@ class RushSelect extends ArrayPrompt {
         choice.availableScripts.filter((script) => script !== options.ignoreText)
       )
     })
+
+    this.on('keypress', (ch, key) => {
+      this.onKeyPress(ch, key)
+    })
+  }
+
+  onKeyPress(ch, key) {
+    if (ch && /[A-z]+/.test(ch)) {
+      this.filterText = this.filterText || ''
+
+      this.filterText += ch.toLowerCase()
+
+      this.render()
+    } else if (key.action === 'delete') {
+      this.filterText = this.filterText.substring(0, this.filterText.length - 1)
+      this.render()
+    }
   }
 
   async reset() {
@@ -383,7 +400,9 @@ class RushSelect extends ArrayPrompt {
     }
 
     this.clear(size)
-    this.write([header, prompt /*, key*/, body, footer].filter(Boolean).join('\n'))
+    this.write(
+      [header, prompt /*, key*/, this.filterText || 'bla', body, footer].filter(Boolean).join('\n')
+    )
     if (!this.state.submitted) {
       this.write(this.margin[2])
     }
