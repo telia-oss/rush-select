@@ -2,11 +2,7 @@ const colors = require('ansi-colors')
 const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 
-const {
-  wrapInSpaces,
-  replaceWithCharacter,
-  replaceWithNotAvailable
-} = require('./string-utils')
+const { wrapInSpaces, replaceWithCharacter, replaceWithNotAvailable } = require('./string-utils')
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -33,9 +29,7 @@ class RushSelect extends ArrayPrompt {
 
     this.choices.forEach((choice) => {
       choice.availableScripts = [options.ignoreText].concat(
-        choice.availableScripts.filter(
-          (script) => script !== options.ignoreText
-        )
+        choice.availableScripts.filter((script) => script !== options.ignoreText)
       )
     })
   }
@@ -44,9 +38,7 @@ class RushSelect extends ArrayPrompt {
     this.tableized = false
     await super.reset()
 
-    this.choices.forEach((choice) =>
-      this.checkIfPackageScriptInstanceShouldBeAdded(choice)
-    )
+    this.choices.forEach((choice) => this.checkIfPackageScriptInstanceShouldBeAdded(choice))
 
     return this.render()
   }
@@ -70,9 +62,7 @@ class RushSelect extends ArrayPrompt {
 
   async dispatch(s, key) {
     if (this.multiple) {
-      return this[key.name]
-        ? await this[key.name](s, key)
-        : await super.dispatch(s, key)
+      return this[key.name] ? await this[key.name](s, key) : await super.dispatch(s, key)
     }
     this.alert()
   }
@@ -132,11 +122,7 @@ class RushSelect extends ArrayPrompt {
         (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
     ).length
 
-    if (
-      wasActive &&
-      choiceCountDerivedFromCurrentPackage > 1 &&
-      ignoresLeft > 1
-    ) {
+    if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
       let isFirstOccurrence =
         this.choices.findIndex((ch) => ch.name === choice.name) === choice.index
 
@@ -208,9 +194,7 @@ class RushSelect extends ArrayPrompt {
 
     const allRowItemsAreDisabled =
       choice.availableScripts &&
-      choice.scale.every(
-        ({ index }) => !isScriptAvailable(this.scale[index].name)
-      )
+      choice.scale.every(({ index }) => !isScriptAvailable(this.scale[index].name))
 
     if (allRowItemsAreDisabled) {
       // all indexes are disabled, might as well make it unavailable
@@ -225,37 +209,26 @@ class RushSelect extends ArrayPrompt {
       return replaceWithCharacter(wrapInSpaces(optionName), '─')
     } else if (rowIsDisabled && allRowItemsAreDisabled) {
       // all options are unavailable
-      return this.styles.yellow(
-        wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
-      )
+      return this.styles.yellow(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
     } else if (itemInRowIsDisabled) {
       // this particular selection in the choice row is disabled
       if (rowIsFocused && itemInRowIsSelected) {
         return this.styles.strong(
-          this.styles.magenta(
-            wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
-          )
+          this.styles.magenta(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
         )
       }
       if (itemInRowIsSelected)
-        return this.styles.green(
-          wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
-        )
+        return this.styles.green(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
       if (rowIsFocused)
-        return this.styles.strong(
-          wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
-        )
-      return this.styles.yellow(
-        wrapInSpaces(replaceWithNotAvailable(optionName, ' '))
-      )
+        return this.styles.strong(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
+      return this.styles.yellow(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
     }
 
     // row and item is available for selection
     if (rowIsFocused && itemInRowIsSelected) {
       return this.styles.strong(this.styles.magenta(wrapInSpaces(optionName)))
     }
-    if (itemInRowIsSelected)
-      return this.styles.strong(this.styles.green(wrapInSpaces(optionName)))
+    if (itemInRowIsSelected) return this.styles.strong(this.styles.green(wrapInSpaces(optionName)))
     if (rowIsFocused) return this.styles.white(wrapInSpaces(optionName))
     return this.styles.strong(this.styles.dark(wrapInSpaces(optionName)))
   }
@@ -295,18 +268,14 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let pad = (str) =>
-      this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
+    let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
     let ind = this.indent(choice)
     let message = await this.resolve(choice.message, this.state, choice, i)
     let scale = await this.renderScale(choice, i)
     let margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
-    this.widths[0] = Math.min(
-      this.widths[0],
-      this.width - this.scaleLength - margin.length
-    )
+    this.widths[0] = Math.min(this.widths[0], this.width - this.scaleLength - margin.length)
     let msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
@@ -331,9 +300,7 @@ class RushSelect extends ArrayPrompt {
   async renderChoices() {
     if (this.state.submitted) return ''
     this.tableize()
-    let choices = this.visible.map(
-      async (ch, i) => await this.renderChoice(ch, i)
-    )
+    let choices = this.visible.map(async (ch, i) => await this.renderChoice(ch, i))
     let visible = await Promise.all(choices)
     return this.margin[0] + visible.map((v) => v.join(' ')).join('\n')
   }
@@ -364,10 +331,7 @@ class RushSelect extends ArrayPrompt {
     let choicesAndCategories = visibles.map(async (ch, i) => {
       let renderedChoice = await this.renderChoice(ch, i, true)
 
-      if (
-        this.doesChoiceHaveCategory(ch) &&
-        mappedByCategories[ch.category][0] === ch
-      ) {
+      if (this.doesChoiceHaveCategory(ch) && mappedByCategories[ch.category][0] === ch) {
         let renderedCategory = await this.renderCategory(ch.category)
         return [renderedCategory, renderedChoice]
       } else if (mappedByCategories['uncategorized'][0] === ch) {
@@ -419,9 +383,7 @@ class RushSelect extends ArrayPrompt {
     }
 
     this.clear(size)
-    this.write(
-      [header, prompt /*, key*/, body, footer].filter(Boolean).join('\n')
-    )
+    this.write([header, prompt /*, key*/, body, footer].filter(Boolean).join('\n'))
     if (!this.state.submitted) {
       this.write(this.margin[2])
     }
