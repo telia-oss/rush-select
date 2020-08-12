@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 const path = require('path')
 
+const colors = require('ansi-colors')
 const { spawnStreaming } = require('@lerna/child-process')
-const createPrompt = require('./create-prompt.js')
+const RushSelect = require('./prompt')
 const { createChoices, setInitialValuesOnChoices } = require('./choice-generation.js')
 const { save, load } = require('./save-load.js')
 const { getProjectsAndRespectivePackageJson, getRushRootDir } = require('./rush-utils')
@@ -46,7 +47,19 @@ if (argv.limit) {
   allScriptNames = allScriptNames.slice(0, argv.limit)
 }
 
-module.exports = createPrompt(choices, allScriptNames)
+module.exports = new RushSelect({
+  name: 'rush-select',
+  message:
+    (global.extraWarn ? global.extraWarn + '\n\n' : '') +
+    'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
+  messageWidth: 150,
+  styles: { primary: colors.grey },
+  choices,
+  // the description above the items
+  scale: allScriptNames.map((name) => ({
+    name
+  }))
+})
   .run()
   .then((scriptsToRun) => {
     scriptsToRun = scriptsToRun
