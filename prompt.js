@@ -269,18 +269,42 @@ class RushSelect extends ArrayPrompt {
    */
 
   renderScale(choice, i) {
-    let scale = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
+    let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
+
+    const maxItemsOnScreen = 3
+
+    const choiceScaleIndex = this.choices[this.index].scaleIndex
+    let itemsFromLeftEdge = null
+    let itemsFromRightEdge = null
+
+    if (scaleItems.length > maxItemsOnScreen) {
+      const scrollingIndex = choiceScaleIndex - (choiceScaleIndex % maxItemsOnScreen)
+
+      const sliceStart =
+        scrollingIndex + maxItemsOnScreen < scaleItems.length
+          ? scrollingIndex
+          : scaleItems.length - maxItemsOnScreen
+
+      const sliceEnd = Math.min(scaleItems.length, sliceStart + maxItemsOnScreen)
+
+      itemsFromLeftEdge = sliceStart
+      itemsFromRightEdge = scaleItems.length - sliceEnd
+
+      scaleItems = scaleItems.slice(sliceStart, sliceStart + maxItemsOnScreen)
+    }
+
     let padding = this.term === 'Hyper' ? '' : ' '
-    return scale.join(padding + this.symbols.line.repeat(this.edgeLength))
-  }
-
-  /**
-   * Render a category =>
-   *   "Libraries"
-   */
-
-  async renderCategory(categoryName) {
-    return categoryName
+    return (
+      new Array(itemsFromLeftEdge)
+        .fill(1)
+        .map(() => '.')
+        .join('') +
+      scaleItems.join(padding + this.symbols.line.repeat(this.edgeLength)) +
+      new Array(itemsFromRightEdge)
+        .fill(1)
+        .map(() => '.')
+        .join('')
+    )
   }
 
   /**
@@ -384,8 +408,7 @@ class RushSelect extends ArrayPrompt {
         let prevChoiceCategory = i === 0 ? null : visibles[i - 1].category
 
         if (prevChoiceCategory !== ch.category) {
-          let renderedCategory = await this.renderCategory(ch.category)
-          choicesAndCategories.push(renderedCategory)
+          choicesAndCategories.push(ch.category)
         }
       }
 
