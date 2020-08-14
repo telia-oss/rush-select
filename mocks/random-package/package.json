@@ -1,0 +1,7 @@
+{
+  "name": "random-package",
+  "scripts": {
+    "build:watch": "echo hello!",
+    "build:prod": "echo hello!"
+  }
+}

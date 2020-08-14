@@ -1,12 +1,15 @@
 const colors = require('ansi-colors')
+const stripAnsi = require('strip-ansi')
 const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
+const fuzzy = require('fuzzy')
 
 const { wrapInSpaces, replaceWithCharacter, replaceWithNotAvailable } = require('./string-utils')
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
     options.ignoreText = options.ignoreText || 'ignore'
+    options.uncategorizedText = options.uncategorizedText || 'uncategorized'
 
     options.scale.unshift({
       name: options.ignoreText
@@ -28,25 +31,36 @@ class RushSelect extends ArrayPrompt {
     }
 
     this.choices.forEach((choice) => {
+      // ensure some category exists
+      choice.category = choice.category || this.options.uncategorizedText
+
       choice.availableScripts = [options.ignoreText].concat(
         choice.availableScripts.filter((script) => script !== options.ignoreText)
       )
     })
 
+    this.choices = this.choices.sort((a, b) => {
+      return a.category === this.options.uncategorizedText || a < b ? -1 : 1
+    })
+
+    this.filterText = ''
     this.on('keypress', (ch, key) => {
       this.onKeyPress(ch, key)
     })
   }
 
   onKeyPress(ch, key) {
-    if (ch && /[A-z]+/.test(ch)) {
+    if (key.action === 'delete') {
+      this.filterText = this.filterText.substring(0, this.filterText.length - 1)
+
+      this.index = 0
+      this.render()
+    } else if (typeof ch === 'string') {
       this.filterText = this.filterText || ''
 
       this.filterText += ch.toLowerCase()
 
-      this.render()
-    } else if (key.action === 'delete') {
-      this.filterText = this.filterText.substring(0, this.filterText.length - 1)
+      this.index = 0
       this.render()
     }
   }
@@ -310,8 +324,12 @@ class RushSelect extends ArrayPrompt {
     return [ind + pointer, lines.join('\n')].filter(Boolean)
   }
 
-  doesChoiceHaveCategory(choice) {
-    return choice.category && typeof choice.category === 'string'
+  isChoiceCategorized(choice) {
+    return choice.category === this.options.uncategorizedText
+  }
+
+  areAllChoicesUncategorized(choices) {
+    return choices.every((ch) => ch.category === this.options.uncategorizedText)
   }
 
   async renderChoices() {
@@ -331,36 +349,74 @@ class RushSelect extends ArrayPrompt {
 
     // ensure the order of which was supplied
     mappedByCategories = this.visible.reduce((coll = {}, curr) => {
-      coll['uncategorized'] = coll['uncategorized'] || []
-
-      let categoryName = curr.category || 'uncategorized'
-
-      coll[categoryName] = coll[categoryName] || []
-      coll[categoryName].push(curr)
+      coll[curr.category] = coll[curr.category] || []
+      coll[curr.category].push(curr)
 
       return coll
     }, {})
 
-    Object.keys(mappedByCategories).forEach((key) => {
-      visibles = visibles.concat(mappedByCategories[key])
-    })
+    const appendVisiblesInCategory = (category) => {
+      if (this.filterText !== '') {
+        let filtered = this.getFilteredChoices(this.filterText, mappedByCategories[category])
 
-    let choicesAndCategories = visibles.map(async (ch, i) => {
+        if (filtered.length > 0) {
+          visibles = visibles.concat(filtered)
+        }
+      } else if (mappedByCategories[category]) {
+        visibles = visibles.concat(mappedByCategories[category])
+      }
+    }
+
+    // do fuzzy matching in each category
+    Object.keys(mappedByCategories).forEach(appendVisiblesInCategory)
+
+    // fix the indexing
+    visibles.forEach((ch, index) => (ch.index = index))
+
+    const categorizedChoicesExist = visibles.some((ch) => this.isChoiceCategorized(ch))
+
+    let choicesAndCategories = []
+    for (let i = 0; i < visibles.length; i++) {
+      let ch = visibles[i]
       let renderedChoice = await this.renderChoice(ch, i, true)
 
-      if (this.doesChoiceHaveCategory(ch) && mappedByCategories[ch.category][0] === ch) {
-        let renderedCategory = await this.renderCategory(ch.category)
-        return [renderedCategory, renderedChoice]
-      } else if (mappedByCategories['uncategorized'][0] === ch) {
-        let renderedCategory = await this.renderCategory('uncategorized')
-        return [renderedCategory, renderedChoice]
+      if (categorizedChoicesExist) {
+        let prevChoiceCategory = i === 0 ? null : visibles[i - 1].category
+
+        if (prevChoiceCategory !== ch.category) {
+          let renderedCategory = await this.renderCategory(ch.category)
+          choicesAndCategories.push(renderedCategory)
+        }
       }
 
-      return [renderedChoice]
-    })
+      choicesAndCategories.push(renderedChoice)
+    }
 
-    let visible = (await Promise.all(choicesAndCategories)).flat().flat()
+    let visible = (await Promise.all(choicesAndCategories)).flat()
     return this.margin[0] + visible.join('\n')
+  }
+
+  async getFilterHeading() {
+    if (this.filterText !== '') {
+      return 'Filtering by: ' + this.filterText + '\n'
+    }
+    return '[Type to filter packages]\n'
+  }
+
+  getFilteredChoices(filterText, choices /*, defaultItem*/) {
+    return fuzzy
+      .filter(filterText || '', choices, {
+        // fuzzy options
+        pre: this.styles.green.open,
+        post: this.styles.green.close,
+        extract: (choice) => choice.ansiLessName || stripAnsi(choice.name)
+      })
+      .map((e) => {
+        e.original.ansiLessName = stripAnsi(e.string)
+        e.original.name = e.string
+
+        return e.original
+      })
   }
 
   async render() {
@@ -386,9 +442,7 @@ class RushSelect extends ArrayPrompt {
     let output = await this.format()
     // let key = await this.renderScaleKey()
     let help = (await this.error()) || (await this.hint())
-    let body = this.visible.some(this.doesChoiceHaveCategory)
-      ? await this.renderChoicesAndCategories()
-      : await this.renderChoices()
+    let body = await this.renderChoicesAndCategories()
     let footer = await this.footer()
     let err = this.emptyError
 
@@ -399,10 +453,10 @@ class RushSelect extends ArrayPrompt {
       prompt += this.styles.danger(err)
     }
 
+    let filterHeading = await this.getFilterHeading()
+
     this.clear(size)
-    this.write(
-      [header, prompt /*, key*/, this.filterText || 'bla', body, footer].filter(Boolean).join('\n')
-    )
+    this.write([header, prompt /*, key*/, filterHeading, body, footer].filter(Boolean).join('\n'))
     if (!this.state.submitted) {
       this.write(this.margin[2])
     }

@@ -2,6 +2,10 @@
   "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
   "projects": [
     {
+      "packageName": "random-package",
+      "projectFolder": "random-package"
+    },
+    {
       "packageName": "cli-package",
       "projectFolder": "tooling/cli-package",
       "reviewCategory": "tooling"

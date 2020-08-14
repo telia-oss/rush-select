@@ -18,7 +18,6 @@ module.exports = {
         // insert a project
         total.push({
           name: project.packageName,
-          _reviewCategory: project.reviewCategory,
           category: project.reviewCategory,
           availableScripts
         })

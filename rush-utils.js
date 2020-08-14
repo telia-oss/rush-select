@@ -27,10 +27,6 @@ module.exports = {
           'package.json'
         ))
 
-        if (!project.reviewCategory) {
-          project.reviewCategory = '[no category in rush.json]'
-        }
-
         return project
       })
       .sort((a, b) => {
