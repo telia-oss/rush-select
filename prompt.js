@@ -278,7 +278,11 @@ class RushSelect extends ArrayPrompt {
     let itemsFromRightEdge = null
 
     if (scaleItems.length > maxItemsOnScreen) {
-      const scrollingIndex = choiceScaleIndex - (choiceScaleIndex % maxItemsOnScreen)
+      const scrollingIndex =
+        choiceScaleIndex -
+        (choiceScaleIndex % maxItemsOnScreen) +
+        // account for end of right side not being a multiplier of max items count
+        Math.max(0, choiceScaleIndex + maxItemsOnScreen - scaleItems.length)
 
       const sliceStart =
         scrollingIndex + maxItemsOnScreen < scaleItems.length
