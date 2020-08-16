@@ -44,8 +44,19 @@ class RushSelect extends ArrayPrompt {
     })
 
     this.filterText = ''
-    this.on('keypress', (ch, key) => {
+    const keyPressHandler = (ch, key) => {
       this.onKeyPress(ch, key)
+    }
+    this.on('keypress', keyPressHandler)
+
+    const resizeHandler = () => {
+      this.render()
+    }
+    this.stdout.on('resize', resizeHandler)
+
+    this.on('close', () => {
+      this.removeListener('keypress', keyPressHandler)
+      this.stdout.removeListener('resize', resizeHandler)
     })
   }
 
@@ -268,10 +279,8 @@ class RushSelect extends ArrayPrompt {
    * Render the actual scale => ◯────◯────◉────◯────◯
    */
 
-  renderScale(choice, i) {
+  renderScale(choice, i, maxItemsOnScreen) {
     let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
-
-    const maxItemsOnScreen = 3
 
     const choiceScaleIndex = this.choices[this.index].scaleIndex
     let itemsFromLeftEdge = null
@@ -327,11 +336,13 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
+    let maxScaleItemsVisible = 10
+
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
     let ind = this.indent(choice)
     let message = await this.resolve(choice.message, this.state, choice, i)
-    let scale = await this.renderScale(choice, i)
+    let scale = await this.renderScale(choice, i, maxScaleItemsVisible)
     let margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
     this.widths[0] = Math.min(this.widths[0], this.width - this.scaleLength - margin.length)
@@ -339,17 +350,34 @@ class RushSelect extends ArrayPrompt {
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
     if (focused) {
-      scale = this.styles.info(scale)
       lines = lines.map((line) => this.styles.info(line))
       lines[0] = bulletIndentation ? '- > ' + lines[0] : '> '
     } else {
       lines[0] = bulletIndentation ? '-   ' + lines[0] : lines[0]
     }
 
-    lines[0] += scale
-
     if (this.linebreak) lines.push('')
-    return [ind + pointer, lines.join('\n')].filter(Boolean)
+
+    let renderedChoice
+    let columnSpaceRemaining
+
+    let termColumns = process.stdout.columns
+
+    do {
+      scale = await this.renderScale(choice, i, maxScaleItemsVisible)
+
+      let leLines = [...lines]
+      leLines[0] += this.focused ? this.styles.info(scale) : scale
+
+      renderedChoice = [ind + pointer, leLines.join('\n')].filter(Boolean)
+      columnSpaceRemaining =
+        termColumns -
+        stripAnsi(Array.isArray(renderedChoice) ? renderedChoice[0] : renderedChoice).length
+
+      maxScaleItemsVisible--
+    } while (columnSpaceRemaining < 0 && maxScaleItemsVisible > 0)
+
+    return renderedChoice
   }
 
   isChoiceCategorized(choice) {
