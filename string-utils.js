@@ -1,24 +1,13 @@
 // Utility functions for string operations
 module.exports = {
-  wrapInSpaces: (text, spaceCharacter = ' ') =>
-    spaceCharacter + text + spaceCharacter,
+  replaceWithCharacter: (text, character = ' ') => text.padReplace(/./g, character),
 
-  replaceWithCharacter: (text, character = ' ') =>
-    text.replace(/./g, character),
-
-  replaceWithNotAvailable: (text) => {
-    var notAvailableText = 'n/a'
+  padReplace: (text, replaceText = '') => {
     let result = ''
 
-    result += ''.padStart(
-      Math.floor(text.length / 2 - notAvailableText.length / 2),
-      ' '
-    )
-    result += notAvailableText
-    result += ''.padEnd(
-      Math.ceil(text.length / 2 - notAvailableText.length / 2),
-      ' '
-    )
+    result += ''.padStart(Math.floor(text.length / 2 - replaceText.length / 2), ' ')
+    result += replaceText
+    result += ''.padEnd(Math.ceil(text.length / 2 - replaceText.length / 2), ' ')
     return result
   }
 }

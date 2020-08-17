@@ -4,7 +4,7 @@ const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 const fuzzy = require('fuzzy')
 
-const { wrapInSpaces, replaceWithCharacter, replaceWithNotAvailable } = require('./string-utils')
+const { padReplace } = require('./string-utils')
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -256,57 +256,44 @@ class RushSelect extends ArrayPrompt {
    * Render a scale indicator => ignore  ─── build:watch  ─── build:prod
    */
 
-  scaleIndicator(choice, item, rowIndex) {
-    let selectedRowIndex = this.index
-
-    const optionName = this.scale[item.index].name
+  scaleIndicator(choice, item, choiceIndex) {
+    const scaleItemName = this.scale[item.index].name
     const isScriptAvailable = (optionName) =>
       choice.availableScripts && choice.availableScripts.includes(optionName)
 
-    let itemInRowIsSelected = choice.scaleIndex === item.index
-    let rowIsFocused = selectedRowIndex === rowIndex
+    let scaleItemIsSelected = choice.scaleIndex === item.index
+    let choiceIsFocused = this.index === choiceIndex
 
-    const itemInRowIsDisabled = !isScriptAvailable(optionName)
-
-    const allRowItemsAreDisabled =
+    const allScaleItemsAreUnavailable =
       choice.availableScripts &&
       choice.scale.every(({ index }) => !isScriptAvailable(this.scale[index].name))
 
-    if (allRowItemsAreDisabled) {
-      // all indexes are disabled, might as well make it unavailable
+    let s = this.styles
+
+    if (allScaleItemsAreUnavailable) {
+      // all scale items are unavailable, might as well make the choice skipped
       choice.disabled = true
+      return s.yellow(padReplace(scaleItemName))
+    } else if (!isScriptAvailable(scaleItemName)) {
+      // // this particular selection in the choice row is disabled
+      // if (choiceIsFocused && scaleItemIsSelected) {
+      //   return s.strong(s.magenta(padReplace(scaleItemName)))
+      // } else if (scaleItemIsSelected) {
+      //   return s.green(padReplace(scaleItemName))
+      // } else if (choiceIsFocused) {
+      //   return s.strong(padReplace(scaleItemName))
+      // }
+      return s.yellow(padReplace(scaleItemName))
     }
-
-    const rowIsDisabled = choice.disabled
-
-    if (rowIsDisabled && !allRowItemsAreDisabled) {
-      // this entire choice/row is disabled, which enquirer will ensure to skip selections
-      // used for the fake separators
-      return replaceWithCharacter(wrapInSpaces(optionName), '─')
-    } else if (rowIsDisabled && allRowItemsAreDisabled) {
-      // all options are unavailable
-      return this.styles.yellow(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
-    } else if (itemInRowIsDisabled) {
-      // this particular selection in the choice row is disabled
-      if (rowIsFocused && itemInRowIsSelected) {
-        return this.styles.strong(
-          this.styles.magenta(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
-        )
-      }
-      if (itemInRowIsSelected)
-        return this.styles.green(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
-      if (rowIsFocused)
-        return this.styles.strong(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
-      return this.styles.yellow(wrapInSpaces(replaceWithNotAvailable(optionName, ' ')))
-    }
-
     // row and item is available for selection
-    if (rowIsFocused && itemInRowIsSelected) {
-      return this.styles.strong(this.styles.magenta(wrapInSpaces(optionName)))
+    else if (choiceIsFocused && scaleItemIsSelected) {
+      return s.strong(s.magenta(scaleItemName))
+    } else if (scaleItemIsSelected) {
+      return s.strong(s.green(scaleItemName))
+    } else if (choiceIsFocused) {
+      return s.white(scaleItemName)
     }
-    if (itemInRowIsSelected) return this.styles.strong(this.styles.green(wrapInSpaces(optionName)))
-    if (rowIsFocused) return this.styles.white(wrapInSpaces(optionName))
-    return this.styles.strong(this.styles.dark(wrapInSpaces(optionName)))
+    return s.strong(s.dark(scaleItemName))
   }
 
   /**
@@ -314,7 +301,7 @@ class RushSelect extends ArrayPrompt {
    */
 
   renderScale(choice, i, maxItemsOnScreen) {
-    let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
+    let scaleItems = choice.scale.map((item) => ' ' + this.scaleIndicator(choice, item, i) + ' ')
 
     const choiceScaleIndex = this.choices[this.index].scaleIndex
     let itemsFromLeftEdge = null
