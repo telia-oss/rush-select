@@ -43,6 +43,9 @@ class RushSelect extends ArrayPrompt {
       return a.category === this.options.uncategorizedText || a < b ? -1 : 1
     })
 
+    // for the filtering, we store the choices here
+    this.allChoices = this.choices
+
     this.filterText = ''
     const keyPressHandler = (ch, key) => {
       this.onKeyPress(ch, key)
@@ -63,17 +66,17 @@ class RushSelect extends ArrayPrompt {
   onKeyPress(ch, key) {
     if (key.action === 'delete') {
       this.filterText = this.filterText.substring(0, this.filterText.length - 1)
-
-      this.index = 0
-      this.render()
     } else if (typeof ch === 'string') {
       this.filterText = this.filterText || ''
-
       this.filterText += ch.toLowerCase()
-
-      this.index = 0
-      this.render()
+    } else {
+      // no filter-related key presses, return early
+      return
     }
+
+    this.choices = this.getFilteredChoices(this.filterText, this.allChoices)
+    this.index = 0
+    this.render()
   }
 
   async reset() {
@@ -139,16 +142,41 @@ class RushSelect extends ArrayPrompt {
     }
   }
 
+  getNextIndexThatHasAvailableScript(direction, choice) {
+    let nextIndex = choice.scaleIndex + (direction === 'right' ? 1 : -1)
+    let optionName = this.scale[nextIndex].name
+
+    const isIndexWithinBounds = (i) => i >= 0 && i < this.scale.length
+    const isValidScaleItem = () =>
+      optionName === this.options.ignoreText || choice.availableScripts.includes(optionName)
+
+    while (!isValidScaleItem() && isIndexWithinBounds(nextIndex)) {
+      nextIndex += direction === 'right' ? 1 : -1
+      optionName = this.scale[nextIndex].name
+    }
+
+    if (isIndexWithinBounds(nextIndex)) {
+      return nextIndex
+    }
+
+    throw new Error('no scale scrip item available to move to in that direction')
+  }
+
   right() {
     let choice = this.focused
 
     if (choice.scaleIndex >= this.scale.length - 1) return this.alert()
 
-    choice.scaleIndex++
+    try {
+      choice.scaleIndex = this.getNextIndexThatHasAvailableScript('right', choice)
 
-    this.checkIfPackageScriptInstanceShouldBeAdded(choice)
-
-    return this.render()
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice)
+      return this.render()
+    } catch (e) {
+      if (e.message !== 'no scale scrip item available to move to in that direction') {
+        throw e
+      }
+    }
   }
 
   checkIfPackageScriptInstanceShouldBeRemoved(choice) {
@@ -182,9 +210,17 @@ class RushSelect extends ArrayPrompt {
   left() {
     let choice = this.focused
     if (choice.scaleIndex <= 0) return this.alert()
-    choice.scaleIndex--
 
-    this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
+    try {
+      choice.scaleIndex = this.getNextIndexThatHasAvailableScript('left', choice)
+
+      this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
+      return this.render()
+    } catch (e) {
+      if (e.message !== 'no scale scrip item available to move to in that direction') {
+        throw e
+      }
+    }
 
     return this.render()
   }
@@ -411,20 +447,9 @@ class RushSelect extends ArrayPrompt {
       return coll
     }, {})
 
-    const appendVisiblesInCategory = (category) => {
-      if (this.filterText !== '') {
-        let filtered = this.getFilteredChoices(this.filterText, mappedByCategories[category])
-
-        if (filtered.length > 0) {
-          visibles = visibles.concat(filtered)
-        }
-      } else if (mappedByCategories[category]) {
-        visibles = visibles.concat(mappedByCategories[category])
-      }
-    }
-
-    // do fuzzy matching in each category
-    Object.keys(mappedByCategories).forEach(appendVisiblesInCategory)
+    Object.keys(mappedByCategories).forEach(
+      (category) => (visibles = visibles.concat(mappedByCategories[category]))
+    )
 
     // fix the indexing
     visibles.forEach((ch, index) => (ch.index = index))

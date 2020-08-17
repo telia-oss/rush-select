@@ -1,6 +1,9 @@
 {
   "name": "browser-package",
   "scripts": {
-    "build:watch": "echo hello!"
+    "build:watch": "echo hello!",
+    "build:prod": "echo hello!",
+    "build": "echo hello!",
+    "test": "echo hello!"
   }
 }
