@@ -144,15 +144,13 @@ class RushSelect extends ArrayPrompt {
 
   getNextIndexThatHasAvailableScript(direction, choice) {
     let nextIndex = choice.scaleIndex + (direction === 'right' ? 1 : -1)
-    let optionName = this.scale[nextIndex].name
 
     const isIndexWithinBounds = (i) => i >= 0 && i < this.scale.length
-    const isValidScaleItem = () =>
+    const isValidScaleItem = (optionName) =>
       optionName === this.options.ignoreText || choice.availableScripts.includes(optionName)
 
-    while (!isValidScaleItem() && isIndexWithinBounds(nextIndex)) {
+    while (isIndexWithinBounds(nextIndex) && !isValidScaleItem(this.scale[nextIndex].name)) {
       nextIndex += direction === 'right' ? 1 : -1
-      optionName = this.scale[nextIndex].name
     }
 
     if (isIndexWithinBounds(nextIndex)) {
