@@ -55,8 +55,9 @@ module.exports = new RushSelect({
   messageWidth: 150,
   styles: { primary: colors.grey },
   choices,
+  edgeLength: 2,
   // the description above the items
-  scale: allScriptNames.map((name) => ({
+  scale: allScriptNames.sort().map((name) => ({
     name
   }))
 })

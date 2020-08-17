@@ -1,5 +1,6 @@
 const colors = require('ansi-colors')
 const stripAnsi = require('strip-ansi')
+// const ansiStyles = require('ansi-styles')
 const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 const fuzzy = require('fuzzy')
@@ -283,7 +284,7 @@ class RushSelect extends ArrayPrompt {
       // } else if (choiceIsFocused) {
       //   return s.strong(padReplace(scaleItemName))
       // }
-      return s.yellow(padReplace(scaleItemName))
+      return padReplace(scaleItemName)
     }
     // row and item is available for selection
     else if (choiceIsFocused && scaleItemIsSelected) {
@@ -293,7 +294,7 @@ class RushSelect extends ArrayPrompt {
     } else if (choiceIsFocused) {
       return s.white(scaleItemName)
     }
-    return s.strong(s.dark(scaleItemName))
+    return s.strong(scaleItemName)
   }
 
   /**
@@ -301,7 +302,7 @@ class RushSelect extends ArrayPrompt {
    */
 
   renderScale(choice, i, maxItemsOnScreen) {
-    let scaleItems = choice.scale.map((item) => ' ' + this.scaleIndicator(choice, item, i) + ' ')
+    let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
 
     const choiceScaleIndex = this.choices[this.index].scaleIndex
     let itemsFromLeftEdge = null
@@ -329,15 +330,25 @@ class RushSelect extends ArrayPrompt {
 
     let padding = this.term === 'Hyper' ? '' : ' '
     return (
-      new Array(itemsFromLeftEdge)
-        .fill(1)
-        .map(() => '.')
-        .join('') +
-      scaleItems.join(padding + this.symbols.line.repeat(this.edgeLength)) +
-      new Array(itemsFromRightEdge)
-        .fill(1)
-        .map(() => '.')
-        .join('')
+      (itemsFromLeftEdge / maxItemsOnScreen > 0
+        ? '[' +
+          new Array(itemsFromLeftEdge)
+            .fill(1)
+            .map(() => '.')
+            .join('') +
+          ']' +
+          padding
+        : '') +
+      scaleItems.join(padding + this.symbols.line.repeat(this.edgeLength) + padding) +
+      (itemsFromRightEdge / maxItemsOnScreen > 0
+        ? padding +
+          '[' +
+          new Array(itemsFromRightEdge)
+            .fill(1)
+            .map(() => '.')
+            .join('') +
+          ']'
+        : '')
     )
   }
 
@@ -357,7 +368,7 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let maxScaleItemsVisible = 10
+    let maxScaleItemsVisible = 3
 
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
@@ -371,7 +382,7 @@ class RushSelect extends ArrayPrompt {
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
     if (focused) {
-      lines = lines.map((line) => this.styles.info(line))
+      lines = lines.map((line) => (this.styles.hasAnsi(line) ? line : this.styles.highlight(line)))
       lines[0] = bulletIndentation ? '- > ' + lines[0] : '> '
     } else {
       lines[0] = bulletIndentation ? '-   ' + lines[0] : lines[0]
@@ -387,10 +398,10 @@ class RushSelect extends ArrayPrompt {
     do {
       scale = await this.renderScale(choice, i, maxScaleItemsVisible)
 
-      let leLines = [...lines]
-      leLines[0] += this.focused ? this.styles.info(scale) : scale
+      let terminalFittedLines = [...lines]
+      terminalFittedLines[0] += this.focused ? this.styles.info(scale) : scale
 
-      renderedChoice = [ind + pointer, leLines.join('\n')].filter(Boolean)
+      renderedChoice = [ind + pointer, terminalFittedLines.join('\n')].filter(Boolean)
       columnSpaceRemaining =
         termColumns -
         stripAnsi(Array.isArray(renderedChoice) ? renderedChoice[0] : renderedChoice).length
@@ -450,7 +461,7 @@ class RushSelect extends ArrayPrompt {
         let prevChoiceCategory = i === 0 ? null : visibles[i - 1].category
 
         if (prevChoiceCategory !== ch.category) {
-          choicesAndCategories.push(ch.category)
+          choicesAndCategories.push(this.styles.underline(ch.category))
         }
       }
 
@@ -472,13 +483,14 @@ class RushSelect extends ArrayPrompt {
     return fuzzy
       .filter(filterText || '', choices, {
         // fuzzy options
-        pre: this.styles.green.open,
-        post: this.styles.green.close,
+        // pre: ansiStyles.green.open,
+        // post: ansiStyles.green.close,
         extract: (choice) => choice.ansiLessName || stripAnsi(choice.name)
       })
       .map((e) => {
         e.original.ansiLessName = stripAnsi(e.string)
         e.original.name = e.string
+        e.original.message = e.string
 
         return e.original
       })

@@ -29,6 +29,7 @@
   "dependencies": {
     "@lerna/child-process": "3.13.3",
     "ansi-colors": "^3.2.4",
+    "ansi-styles": "^4.2.1",
     "enquirer": "^2.3.0",
     "find-up": "^3.0.0",
     "fuzzy": "^0.1.3",
