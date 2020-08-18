@@ -5,7 +5,9 @@ module.exports = {
     let choices = projects
       // some projects may not have a single script that is allowed to run, so filter them out
       .filter((project) =>
-        Object.keys(project.packageJson.scripts).some((scriptName) => scriptFilterFn(scriptName))
+        Object.keys(project.packageJson.scripts || {}).some((scriptName) =>
+          scriptFilterFn(scriptName)
+        )
       )
       .reduce((total = [], project) => {
         // keep track of the scripts that were found

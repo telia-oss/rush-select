@@ -265,36 +265,16 @@ class RushSelect extends ArrayPrompt {
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
-    const allScaleItemsAreUnavailable =
-      choice.availableScripts &&
-      choice.scale.every(({ index }) => !isScriptAvailable(this.scale[index].name))
-
-    let s = this.styles
-
-    if (allScaleItemsAreUnavailable) {
-      // all scale items are unavailable, might as well make the choice skipped
-      choice.disabled = true
-      return s.yellow(padReplace(scaleItemName))
-    } else if (!isScriptAvailable(scaleItemName)) {
-      // // this particular selection in the choice row is disabled
-      // if (choiceIsFocused && scaleItemIsSelected) {
-      //   return s.strong(s.magenta(padReplace(scaleItemName)))
-      // } else if (scaleItemIsSelected) {
-      //   return s.green(padReplace(scaleItemName))
-      // } else if (choiceIsFocused) {
-      //   return s.strong(padReplace(scaleItemName))
-      // }
-      return padReplace(scaleItemName)
-    }
-    // row and item is available for selection
-    else if (choiceIsFocused && scaleItemIsSelected) {
-      return s.strong(s.magenta(scaleItemName))
+    if (!isScriptAvailable(scaleItemName)) {
+      return padReplace(scaleItemName, '')
+    } else if (choiceIsFocused && scaleItemIsSelected) {
+      return this.styles.strong(this.styles.danger(scaleItemName))
     } else if (scaleItemIsSelected) {
-      return s.strong(s.green(scaleItemName))
+      return this.styles.strong(this.styles.success(scaleItemName))
     } else if (choiceIsFocused) {
-      return s.white(scaleItemName)
+      return this.styles.danger(scaleItemName)
     }
-    return s.strong(scaleItemName)
+    return this.styles.strong(scaleItemName)
   }
 
   /**
@@ -305,8 +285,8 @@ class RushSelect extends ArrayPrompt {
     let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
 
     const choiceScaleIndex = this.choices[this.index].scaleIndex
-    let itemsFromLeftEdge = null
-    let itemsFromRightEdge = null
+    let scrollsFromLeftEdge = null
+    let scrollsFromRightEdge = null
 
     if (scaleItems.length > maxItemsOnScreen) {
       const scrollingIndex =
@@ -322,17 +302,17 @@ class RushSelect extends ArrayPrompt {
 
       const sliceEnd = Math.min(scaleItems.length, sliceStart + maxItemsOnScreen)
 
-      itemsFromLeftEdge = sliceStart
-      itemsFromRightEdge = scaleItems.length - sliceEnd
+      scrollsFromLeftEdge = Math.ceil(sliceStart / maxItemsOnScreen)
+      scrollsFromRightEdge = Math.ceil((scaleItems.length - sliceEnd) / maxItemsOnScreen)
 
       scaleItems = scaleItems.slice(sliceStart, sliceStart + maxItemsOnScreen)
     }
 
     let padding = this.term === 'Hyper' ? '' : ' '
     return (
-      (itemsFromLeftEdge / maxItemsOnScreen > 0
+      (scrollsFromLeftEdge > 0
         ? '[' +
-          new Array(itemsFromLeftEdge)
+          new Array(scrollsFromLeftEdge)
             .fill(1)
             .map(() => '.')
             .join('') +
@@ -340,10 +320,10 @@ class RushSelect extends ArrayPrompt {
           padding
         : '') +
       scaleItems.join(padding + this.symbols.line.repeat(this.edgeLength) + padding) +
-      (itemsFromRightEdge / maxItemsOnScreen > 0
+      (scrollsFromRightEdge > 0
         ? padding +
           '[' +
-          new Array(itemsFromRightEdge)
+          new Array(scrollsFromRightEdge)
             .fill(1)
             .map(() => '.')
             .join('') +
