@@ -63,6 +63,12 @@ module.exports = new RushSelect({
 })
   .run()
   .then((scriptsToRun) => {
+    if (scriptsToRun.length === 0) {
+      console.log('No scripts specified to run, exiting.')
+
+      return
+    }
+
     scriptsToRun = scriptsToRun
       .filter(({ script }) => script !== undefined)
       .filter(({ packageName }) => projects.some((p) => p.packageName === packageName))
@@ -90,7 +96,7 @@ module.exports = new RushSelect({
         'npm',
         ['run', script],
         { cwd: path.resolve(getRushRootDir(), package.projectFolder) },
-        (packageName + '->' + script).substr(0, 50).padEnd(50, ' ')
+        (packageName + ' > ' + script).substr(0, 50).padEnd(50, ' ')
       )
 
       return p

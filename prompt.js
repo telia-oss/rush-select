@@ -65,17 +65,33 @@ class RushSelect extends ArrayPrompt {
   }
 
   onKeyPress(ch, key) {
-    if (key.action === 'delete') {
+    const noFilterPreviouslyApplied = this.filterText === ''
+
+    if (this.filterText !== '' && key.action === 'delete') {
       this.filterText = this.filterText.substring(0, this.filterText.length - 1)
-    } else if (typeof ch === 'string') {
-      this.filterText = this.filterText || ''
+    } else if (typeof ch === 'string' && key.raw === key.sequence) {
+      // it's a typable character, and it's not a special character like a \n
       this.filterText += ch.toLowerCase()
     } else {
       // no filter-related key presses, return early
       return
     }
 
+    if (this.filterText !== '' && noFilterPreviouslyApplied) {
+      // ensure we have all the extra lines by extra script instances stored
+      // before we start filtering the choices
+      this.allChoices = this.choices
+    }
+
     this.choices = this.getFilteredChoices(this.filterText, this.allChoices)
+
+    this.choices.forEach((choice) =>
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
+    )
+    this.choices.forEach((choice) =>
+      this.checkIfPackageScriptInstanceShouldBeRemoved(choice, this.choices)
+    )
+
     this.index = 0
     this.render()
   }
@@ -83,8 +99,6 @@ class RushSelect extends ArrayPrompt {
   async reset() {
     this.tableized = false
     await super.reset()
-
-    this.choices.forEach((choice) => this.checkIfPackageScriptInstanceShouldBeAdded(choice))
 
     return this.render()
   }
@@ -96,7 +110,14 @@ class RushSelect extends ArrayPrompt {
 
     for (let ch of this.choices) {
       longest = Math.max(longest, ch.message.length)
-      ch.scaleIndex = ch.initial || 0
+
+      ch.initial = ch.initial || 0
+
+      if (!this.isValidScaleItem(this.scale[ch.initial].name, ch)) {
+        ch.initial = 0
+      }
+
+      ch.scaleIndex = ch.initial
       ch.scale = []
 
       for (let i = 0; i < this.scale.length; i++) {
@@ -117,14 +138,14 @@ class RushSelect extends ArrayPrompt {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
-  checkIfPackageScriptInstanceShouldBeAdded(choice) {
-    let anyIgnoresLeft = this.choices.some(
+  checkIfPackageScriptInstanceShouldBeAdded(choice, choicesToModify) {
+    let anyIgnoresLeft = choicesToModify.some(
       (ch) =>
         ch.name === choice.name &&
         (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
     )
 
-    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
+    const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
     ).length
 
@@ -132,25 +153,32 @@ class RushSelect extends ArrayPrompt {
       !anyIgnoresLeft &&
       choiceCountDerivedFromCurrentPackage < choice.availableScripts.length - 1
     ) {
-      this.choices.splice(choice.index + 1, 0, {
+      choicesToModify.splice(choice.index + 1, 0, {
         ...choice,
         index: choice.index + 1,
         initial: 0,
         scaleIndex: 0
       })
 
-      this.choices.slice(choice.index + 2).forEach((ch) => ch.index++)
+      choicesToModify.slice(choice.index + 2).forEach((ch) => ch.index++)
     }
+  }
+
+  isValidScaleItem(scaleItemName, choice) {
+    return (
+      scaleItemName === this.options.ignoreText || choice.availableScripts.includes(scaleItemName)
+    )
   }
 
   getNextIndexThatHasAvailableScript(direction, choice) {
     let nextIndex = choice.scaleIndex + (direction === 'right' ? 1 : -1)
 
     const isIndexWithinBounds = (i) => i >= 0 && i < this.scale.length
-    const isValidScaleItem = (optionName) =>
-      optionName === this.options.ignoreText || choice.availableScripts.includes(optionName)
 
-    while (isIndexWithinBounds(nextIndex) && !isValidScaleItem(this.scale[nextIndex].name)) {
+    while (
+      isIndexWithinBounds(nextIndex) &&
+      !this.isValidScaleItem(this.scale[nextIndex].name, choice)
+    ) {
       nextIndex += direction === 'right' ? 1 : -1
     }
 
@@ -169,7 +197,7 @@ class RushSelect extends ArrayPrompt {
     try {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('right', choice)
 
-      this.checkIfPackageScriptInstanceShouldBeAdded(choice)
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
       return this.render()
     } catch (e) {
       if (e.message !== 'no scale scrip item available to move to in that direction') {
@@ -178,14 +206,14 @@ class RushSelect extends ArrayPrompt {
     }
   }
 
-  checkIfPackageScriptInstanceShouldBeRemoved(choice) {
+  checkIfPackageScriptInstanceShouldBeRemoved(choice, choicesToModify) {
     let wasActive = choice.scaleIndex === 0
 
-    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
+    const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
     ).length
 
-    let ignoresLeft = this.choices.filter(
+    let ignoresLeft = choicesToModify.filter(
       (ch) =>
         ch.name === choice.name &&
         (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
@@ -193,16 +221,16 @@ class RushSelect extends ArrayPrompt {
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
       let isFirstOccurrence =
-        this.choices.findIndex((ch) => ch.name === choice.name) === choice.index
+        choicesToModify.findIndex((ch) => ch.name === choice.name) === choice.index
 
-      this.choices.splice(choice.index, 1)
+      choicesToModify.splice(choice.index, 1)
 
       if (!isFirstOccurrence) {
         // move cursor up one step since we're deleting where the cursor currently is
         this.index--
       }
 
-      this.choices.slice(choice.index).forEach((ch) => ch.index--)
+      choicesToModify.slice(choice.index).forEach((ch) => ch.index--)
     }
   }
 
@@ -213,7 +241,7 @@ class RushSelect extends ArrayPrompt {
     try {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('left', choice)
 
-      this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
+      this.checkIfPackageScriptInstanceShouldBeRemoved(choice, this.choices)
       return this.render()
     } catch (e) {
       if (e.message !== 'no scale scrip item available to move to in that direction') {
@@ -253,19 +281,21 @@ class RushSelect extends ArrayPrompt {
     return key.join('\n')
   }
 
+  isScriptAvailable(optionName, choice) {
+    return choice.availableScripts.includes(optionName)
+  }
+
   /**
-   * Render a scale indicator => ignore  ─── build:watch  ─── build:prod
+   * Render a scale indicator => ignore ── build ── build:prod
    */
 
   scaleIndicator(choice, item, choiceIndex) {
     const scaleItemName = this.scale[item.index].name
-    const isScriptAvailable = (optionName) =>
-      choice.availableScripts && choice.availableScripts.includes(optionName)
 
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
-    if (!isScriptAvailable(scaleItemName)) {
+    if (!this.isScriptAvailable(scaleItemName, choice)) {
       return padReplace(scaleItemName, '')
     } else if (choiceIsFocused && scaleItemIsSelected) {
       return this.styles.strong(this.styles.danger(scaleItemName))
@@ -348,7 +378,7 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let maxScaleItemsVisible = 3
+    let maxScaleItemsVisible = 8
 
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
@@ -362,7 +392,7 @@ class RushSelect extends ArrayPrompt {
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
     if (focused) {
-      lines = lines.map((line) => (this.styles.hasAnsi(line) ? line : this.styles.highlight(line)))
+      lines = lines.map((line) => (this.styles.hasAnsi(line) ? line : this.styles.danger(line)))
       lines[0] = bulletIndentation ? '- > ' + lines[0] : '> '
     } else {
       lines[0] = bulletIndentation ? '-   ' + lines[0] : lines[0]
@@ -523,10 +553,10 @@ class RushSelect extends ArrayPrompt {
   submit() {
     this.value = []
     for (let choice of this.choices) {
-      if (choice.availableScripts[choice.index] !== this.options.ignoreText) {
+      if (choice.availableScripts[choice.scaleIndex] !== this.options.ignoreText) {
         this.value.push({
           packageName: choice.name,
-          script: choice.availableScripts[choice.index]
+          script: choice.availableScripts[choice.scaleIndex]
         })
       }
     }
