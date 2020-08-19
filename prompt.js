@@ -73,6 +73,7 @@ class RushSelect extends ArrayPrompt {
     if (this.filterText !== '' && key.action === 'delete') {
       this.filterText = this.filterText.substring(0, this.filterText.length - 1)
     } else if (
+      key.action !== 'delete' &&
       typeof ch === 'string' &&
       key.raw === key.sequence &&
       !key.ctrl &&
