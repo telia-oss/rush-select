@@ -40,7 +40,9 @@ module.exports = {
       )
 
       if (foundChoiceIndex !== -1) {
-        let choiceInUse = usedChoices.some((usedChoice) => usedChoice === choices[foundChoiceIndex])
+        let choiceInUse = usedChoices.some(
+          (usedChoice) => usedChoice.initial === choices[foundChoiceIndex].initial
+        )
 
         if (choiceInUse) {
           // add another choice with the same project source, but different script
@@ -50,9 +52,11 @@ module.exports = {
           foundChoiceIndex++
         }
 
-        choices[foundChoiceIndex].initial = scriptFilterFn(savedProjectScript.script)
-          ? choices[foundChoiceIndex].availableScripts.indexOf(savedProjectScript.script) + 1
-          : 0
+        if (scriptFilterFn(savedProjectScript.script)) {
+          choices[foundChoiceIndex].initial = choices[foundChoiceIndex].availableScripts.indexOf(
+            savedProjectScript.script
+          )
+        }
 
         // mark as used
         usedChoices.push(choices[foundChoiceIndex])

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 const path = require('path')
 
-const colors = require('ansi-colors')
+const readline = require('readline')
+
 const { spawnStreaming } = require('@lerna/child-process')
+const colors = require('ansi-colors')
 const RushSelect = require('./prompt')
 const { createChoices, setInitialValuesOnChoices } = require('./choice-generation.js')
 const { save, load } = require('./save-load.js')
@@ -10,11 +12,6 @@ const { getProjectsAndRespectivePackageJson, getRushRootDir } = require('./rush-
 
 const { getArgs } = require('./yargs.js')
 const { argv } = getArgs()
-
-if (!argv.include && !argv.limit) {
-  global.extraWarn = 'Limiting maximum scripts shown to 8. See --help for how to fix.'
-  argv.limit = 8
-}
 
 // scripts that should be executed with this prompt. Can be edited, shouldn't break anything
 // the order of the strings will be preserved in the prompt
@@ -34,72 +31,110 @@ const isScriptNameAllowed = (scriptName) =>
   (argv.include === null || argv.include.includes(scriptName)) &&
   (argv.exclude === null || !argv.exclude.includes(scriptName))
 
-const projects = getProjectsAndRespectivePackageJson()
+const createRushPrompt = async (choices, allScriptNames, projects) => {
+  let scriptsToRun = await new RushSelect({
+    name: 'rush-select',
+    message:
+      (global.extraWarn ? global.extraWarn + '\n\n' : '') +
+      'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
+    messageWidth: 150,
+    styles: { primary: colors.grey },
+    choices,
+    edgeLength: 2,
+    // the description above the items
+    scale: allScriptNames.sort().map((name) => ({
+      name
+    }))
+  }).run()
 
-let { choices, allScriptNames } = createChoices(projects, isScriptNameAllowed)
+  if (scriptsToRun.length === 0) {
+    console.log('No scripts specified to run, exiting.')
 
-const savedProjectScripts = load()
+    return
+  }
 
-setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
+  scriptsToRun = scriptsToRun
+    .filter(({ script }) => script !== undefined)
+    .filter(({ packageName }) => projects.some((p) => p.packageName === packageName))
+    // add in the rush package reference
+    .map(({ packageName, script }) => {
+      const package = projects.find((p) => p.packageName === packageName)
 
-// crude method of saving screen space
-if (argv.limit) {
-  allScriptNames = allScriptNames.slice(0, argv.limit)
+      if (!package.packageJson.scripts || package.packageJson.scripts[script] === undefined) {
+        // it was an "n/a" thing in the menu which got selected, ignore it
+        return null
+      }
+
+      return {
+        package,
+        packageName,
+        script: script
+      }
+    })
+    .filter((project) => project !== null)
+
+  save(scriptsToRun)
+
+  const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
+  const longestSequence = scriptsToRun.reduce((val, curr) => {
+    const result = getPrefix(curr.packageName, curr.script).length
+
+    return result > val ? result : val
+  }, 0)
+
+  return scriptsToRun.map(({ packageName, script, package }) =>
+    spawnStreaming(
+      'npm',
+      ['run', script],
+      { cwd: path.resolve(getRushRootDir(), package.projectFolder) },
+      getPrefix(packageName, script).padEnd(longestSequence, ' ')
+    )
+  )
 }
 
-module.exports = new RushSelect({
-  name: 'rush-select',
-  message:
-    (global.extraWarn ? global.extraWarn + '\n\n' : '') +
-    'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
-  messageWidth: 150,
-  styles: { primary: colors.grey },
-  choices,
-  edgeLength: 2,
-  // the description above the items
-  scale: allScriptNames.sort().map((name) => ({
-    name
-  }))
-})
-  .run()
-  .then((scriptsToRun) => {
-    if (scriptsToRun.length === 0) {
-      console.log('No scripts specified to run, exiting.')
+async function main() {
+  const projects = getProjectsAndRespectivePackageJson()
 
-      return
+  do {
+    const { choices, allScriptNames } = createChoices(projects, isScriptNameAllowed)
+    const savedProjectScripts = load()
+    setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
+
+    let processes
+    try {
+      processes = await createRushPrompt(choices, allScriptNames, projects)
+    } catch (e) {
+      if (e === '') {
+        // prompt was aborted by user
+        console.log('Exiting')
+        return
+      }
+      throw e
     }
 
-    scriptsToRun = scriptsToRun
-      .filter(({ script }) => script !== undefined)
-      .filter(({ packageName }) => projects.some((p) => p.packageName === packageName))
-      // add in the rush package reference
-      .map(({ packageName, script }) => {
-        let package = projects.find((p) => p.packageName === packageName)
-
-        if (!package.packageJson.scripts || package.packageJson.scripts[script] === undefined) {
-          // it was an "n/a" thing in the menu which got selected, ignore it
-          return null
-        }
-
-        return {
-          package,
-          packageName,
-          script: script
-        }
-      })
-      .filter((project) => project !== null)
-
-    save(scriptsToRun)
-
-    scriptsToRun.map(({ packageName, script, package }) => {
-      let p = spawnStreaming(
-        'npm',
-        ['run', script],
-        { cwd: path.resolve(getRushRootDir(), package.projectFolder) },
-        (packageName + ' > ' + script).substr(0, 50).padEnd(50, ' ')
-      )
-
-      return p
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
     })
-  })
-  .catch(console.error)
+
+    rl.on('SIGINT', () => {
+      processes.forEach((p) => p.kill('SIGINT'))
+    })
+
+    await Promise.all(
+      processes.map(
+        (p) =>
+          new Promise((resolve) => {
+            p.once('exit', resolve)
+            p.once('error', resolve)
+          })
+      )
+    )
+
+    rl.close()
+
+    // eslint-disable-next-line
+  } while (true)
+}
+
+main()

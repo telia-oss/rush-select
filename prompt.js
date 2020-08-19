@@ -32,12 +32,15 @@ class RushSelect extends ArrayPrompt {
     }
 
     this.choices.forEach((choice) => {
-      // ensure some category exists
+      // ensure _some_ category exists
       choice.category = choice.category || this.options.uncategorizedText
 
+      // add "ignore" to availableScripts
       choice.availableScripts = [options.ignoreText].concat(
         choice.availableScripts.filter((script) => script !== options.ignoreText)
       )
+      // increase initial by 1, since we added "ignore"
+      choice.initial++
     })
 
     this.choices = this.choices.sort((a, b) => {
@@ -69,7 +72,13 @@ class RushSelect extends ArrayPrompt {
 
     if (this.filterText !== '' && key.action === 'delete') {
       this.filterText = this.filterText.substring(0, this.filterText.length - 1)
-    } else if (typeof ch === 'string' && key.raw === key.sequence) {
+    } else if (
+      typeof ch === 'string' &&
+      key.raw === key.sequence &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option
+    ) {
       // it's a typable character, and it's not a special character like a \n
       this.filterText += ch.toLowerCase()
     } else {
@@ -99,6 +108,10 @@ class RushSelect extends ArrayPrompt {
   async reset() {
     this.tableized = false
     await super.reset()
+
+    this.choices.forEach((choice) =>
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
+    )
 
     return this.render()
   }
@@ -155,6 +168,7 @@ class RushSelect extends ArrayPrompt {
     ) {
       choicesToModify.splice(choice.index + 1, 0, {
         ...choice,
+        message: choice.name,
         index: choice.index + 1,
         initial: 0,
         scaleIndex: 0
@@ -391,11 +405,20 @@ class RushSelect extends ArrayPrompt {
     let msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
+    let selectedBulletCharacter = '-'
+    let bulletCharacter = '-'
+
+    var now = new Date()
+    if (now.getMonth() == 10 && now.getDate() == 31) {
+      selectedBulletCharacter = '😱'
+      bulletCharacter = '👻'
+    }
+
     if (focused) {
       lines = lines.map((line) => (this.styles.hasAnsi(line) ? line : this.styles.danger(line)))
-      lines[0] = bulletIndentation ? '- > ' + lines[0] : '> '
+      lines[0] = bulletIndentation ? selectedBulletCharacter + ' > ' + lines[0] : '> '
     } else {
-      lines[0] = bulletIndentation ? '-   ' + lines[0] : lines[0]
+      lines[0] = bulletIndentation ? bulletCharacter + '   ' + lines[0] : lines[0]
     }
 
     if (this.linebreak) lines.push('')
@@ -423,7 +446,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   isChoiceCategorized(choice) {
-    return choice.category === this.options.uncategorizedText
+    return choice.category !== this.options.uncategorizedText
   }
 
   areAllChoicesUncategorized(choices) {
@@ -445,6 +468,9 @@ class RushSelect extends ArrayPrompt {
     let visibles = []
     let mappedByCategories
 
+    var now = new Date()
+    let specialCategories = now.getMonth() == 3 && now.getDate() == 1
+
     // ensure the order of which was supplied
     mappedByCategories = this.visible.reduce((coll = {}, curr) => {
       coll[curr.category] = coll[curr.category] || []
@@ -453,9 +479,32 @@ class RushSelect extends ArrayPrompt {
       return coll
     }, {})
 
-    Object.keys(mappedByCategories).forEach(
-      (category) => (visibles = visibles.concat(mappedByCategories[category]))
-    )
+    Object.keys(mappedByCategories).forEach((category) => {
+      if (specialCategories) {
+        let animals = [
+          '🐲 Dragon-waking algorithms',
+          '🦖 Tyrannosaurus checks',
+          '🐸 Bug-catching frogs',
+          '🦜 Rubberducking parrots',
+          '🐳 Docker-whales',
+          '🐞 Bug-infestations',
+          '🌵 Things that hurt to type on',
+          '🐇 Pet projects',
+          '🐘 Code that never forgets',
+          '🦊 What does the code say?',
+          '🙈 Definitely AI',
+          '🐶 Does not need the fetch polyfill'
+        ]
+        const randomThing = animals[Math.floor(Math.random() * animals.length)]
+
+        mappedByCategories[category].forEach((choice) => {
+          if (!animals.includes(choice.category)) {
+            choice.category = randomThing
+          }
+        })
+      }
+      visibles = visibles.concat(mappedByCategories[category])
+    })
 
     // fix the indexing
     visibles.forEach((ch, index) => (ch.index = index))

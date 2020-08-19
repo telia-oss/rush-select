@@ -1,7 +1,7 @@
 {
   "name": "random-package",
   "scripts": {
-    "test": "echo hello!",
+    "testttttttttttttttttttt": "echo hello!",
     "test:watch": "echo hello!",
     "build": "echo hello!",
     "build:watch": "echo hello!",
