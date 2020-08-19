@@ -516,7 +516,7 @@ class RushSelect extends ArrayPrompt {
       let ch = visibles[i]
       let renderedChoice = await this.renderChoice(ch, i, true)
 
-      if (categorizedChoicesExist) {
+      if (categorizedChoicesExist || this.filterText !== '') {
         let prevChoiceCategory = i === 0 ? null : visibles[i - 1].category
 
         if (prevChoiceCategory !== ch.category) {
