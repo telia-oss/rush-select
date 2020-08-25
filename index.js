@@ -31,6 +31,8 @@ const isScriptNameAllowed = (scriptName) =>
   (argv.include === null || argv.include.includes(scriptName)) &&
   (argv.exclude === null || !argv.exclude.includes(scriptName))
 
+const rushRootDir = getRushRootDir()
+
 const createRushPrompt = async (choices, allScriptNames, projects) => {
   let scriptsToRun = await new RushSelect({
     name: 'rush-select',
@@ -73,7 +75,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     })
     .filter((project) => project !== null)
 
-  save(scriptsToRun)
+  save(rushRootDir, scriptsToRun)
 
   const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
   const longestSequence = scriptsToRun.reduce((val, curr) => {
@@ -86,7 +88,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     spawnStreaming(
       'npm',
       ['run', script],
-      { cwd: path.resolve(getRushRootDir(), package.projectFolder) },
+      { cwd: path.resolve(rushRootDir, package.projectFolder) },
       getPrefix(packageName, script).padEnd(longestSequence, ' ')
     )
   )
@@ -97,7 +99,7 @@ async function main() {
 
   do {
     const { choices, allScriptNames } = createChoices(projects, isScriptNameAllowed)
-    const savedProjectScripts = load()
+    const savedProjectScripts = load(rushRootDir)
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
     let processes
