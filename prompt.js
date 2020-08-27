@@ -18,6 +18,8 @@ class RushSelect extends ArrayPrompt {
 
     super(options)
 
+    this.preScriptsText = 'pre-scripts'
+
     this.widths = [].concat(options.messageWidth || 50)
     this.align = [].concat(options.align || 'left')
     this.linebreak = options.linebreak || false
@@ -30,6 +32,16 @@ class RushSelect extends ArrayPrompt {
         .fill(0)
         .map((v, i) => ({ name: i + start }))
     }
+
+    const preScriptNames = ['rush install', 'rush update', 'rush build']
+
+    this.choices.unshift({
+      name: 'command',
+      category: this.preScriptsText,
+      availableScripts: ['ignore', ...preScriptNames]
+    })
+
+    this.scale = [...this.scale, ...preScriptNames.map((name) => ({ name }))]
 
     this.choices.forEach((choice) => {
       // ensure _some_ category exists
@@ -44,7 +56,18 @@ class RushSelect extends ArrayPrompt {
     })
 
     this.choices = this.choices.sort((a, b) => {
-      return a.category === this.options.uncategorizedText || a < b ? -1 : 1
+      const customSortOrder = (input) => {
+        switch (input) {
+          case this.preScriptsText:
+            return '_'
+          case this.uncategorizedText:
+            return '__'
+          default:
+            return input
+        }
+      }
+
+      return customSortOrder(a.category) < customSortOrder(b.category) ? -1 : 1
     })
 
     // for the filtering, we store the choices here
@@ -181,7 +204,7 @@ class RushSelect extends ArrayPrompt {
 
   isValidScaleItem(scaleItemName, choice) {
     return (
-      scaleItemName === this.options.ignoreText || choice.availableScripts.includes(scaleItemName)
+      scaleItemName === this.options.ignoreText || this.isScriptAvailable(scaleItemName, choice)
     )
   }
 
@@ -311,7 +334,7 @@ class RushSelect extends ArrayPrompt {
     let choiceIsFocused = this.index === choiceIndex
 
     if (!this.isScriptAvailable(scaleItemName, choice)) {
-      return padReplace(scaleItemName, '')
+      return choice.category === this.preScriptsText ? '' : padReplace(scaleItemName, '')
     } else if (choiceIsFocused && scaleItemIsSelected) {
       return this.styles.strong(this.styles.danger(scaleItemName))
     } else if (scaleItemIsSelected) {
@@ -326,32 +349,34 @@ class RushSelect extends ArrayPrompt {
    * Render the actual scale => ◯────◯────◉────◯────◯
    */
 
-  renderScale(choice, i, maxItemsOnScreen) {
+  renderScale(choice, i, maxScaleItemsOnScreen) {
     let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
 
     const choiceScaleIndex = this.choices[this.index].scaleIndex
     let scrollsFromLeftEdge = null
     let scrollsFromRightEdge = null
 
-    if (scaleItems.length > maxItemsOnScreen) {
+    if (choice.category !== this.preScriptsText && scaleItems.length > maxScaleItemsOnScreen) {
       const scrollingIndex =
         choiceScaleIndex -
-        (choiceScaleIndex % maxItemsOnScreen) +
+        (choiceScaleIndex % maxScaleItemsOnScreen) +
         // account for end of right side not being a multiplier of max items count
-        Math.max(0, choiceScaleIndex + maxItemsOnScreen - scaleItems.length)
+        Math.max(0, choiceScaleIndex + maxScaleItemsOnScreen - scaleItems.length)
 
       const sliceStart =
-        scrollingIndex + maxItemsOnScreen < scaleItems.length
+        scrollingIndex + maxScaleItemsOnScreen < scaleItems.length
           ? scrollingIndex
-          : scaleItems.length - maxItemsOnScreen
+          : scaleItems.length - maxScaleItemsOnScreen
 
-      const sliceEnd = Math.min(scaleItems.length, sliceStart + maxItemsOnScreen)
+      const sliceEnd = Math.min(scaleItems.length, sliceStart + maxScaleItemsOnScreen)
 
-      scrollsFromLeftEdge = Math.ceil(sliceStart / maxItemsOnScreen)
-      scrollsFromRightEdge = Math.ceil((scaleItems.length - sliceEnd) / maxItemsOnScreen)
+      scrollsFromLeftEdge = Math.ceil(sliceStart / maxScaleItemsOnScreen)
+      scrollsFromRightEdge = Math.ceil((scaleItems.length - sliceEnd) / maxScaleItemsOnScreen)
 
-      scaleItems = scaleItems.slice(sliceStart, sliceStart + maxItemsOnScreen)
+      scaleItems = scaleItems.slice(sliceStart, sliceStart + maxScaleItemsOnScreen)
     }
+
+    scaleItems = scaleItems.filter((scaleItem) => scaleItem)
 
     let padding = this.term === 'Hyper' ? '' : ' '
     return (
@@ -393,13 +418,13 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let maxScaleItemsVisible = 8
+    let maxScaleItemsOnScreen = 11
 
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
     let ind = this.indent(choice)
     let message = await this.resolve(choice.message, this.state, choice, i)
-    let scale = await this.renderScale(choice, i, maxScaleItemsVisible)
+    let scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
     let margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
     this.widths[0] = Math.min(this.widths[0], this.width - this.scaleLength - margin.length)
@@ -430,7 +455,7 @@ class RushSelect extends ArrayPrompt {
     let termColumns = process.stdout.columns
 
     do {
-      scale = await this.renderScale(choice, i, maxScaleItemsVisible)
+      scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
 
       let terminalFittedLines = [...lines]
       terminalFittedLines[0] += this.focused ? this.styles.info(scale) : scale
@@ -440,8 +465,8 @@ class RushSelect extends ArrayPrompt {
         termColumns -
         stripAnsi(Array.isArray(renderedChoice) ? renderedChoice[0] : renderedChoice).length
 
-      maxScaleItemsVisible--
-    } while (columnSpaceRemaining < 0 && maxScaleItemsVisible > 0)
+      maxScaleItemsOnScreen--
+    } while (columnSpaceRemaining < 0 && maxScaleItemsOnScreen > 0)
 
     return renderedChoice
   }
