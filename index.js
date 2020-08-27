@@ -40,6 +40,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
       (global.extraWarn ? global.extraWarn + '\n\n' : '') +
       'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
     messageWidth: 150,
+    margin: [0, 1, 0, 0],
     styles: { primary: colors.grey },
     choices,
     edgeLength: 2,
