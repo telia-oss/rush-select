@@ -33,15 +33,15 @@ class RushSelect extends ArrayPrompt {
         .map((v, i) => ({ name: i + start }))
     }
 
-    const preScriptNames = ['rush install', 'rush update', 'rush build']
+    this.preScriptNames = ['rush install', 'rush update', 'rush build']
 
     this.choices.unshift({
       name: 'command',
       category: this.preScriptsText,
-      availableScripts: ['ignore', ...preScriptNames]
+      availableScripts: ['ignore', ...this.preScriptNames]
     })
 
-    this.scale = [...this.scale, ...preScriptNames.map((name) => ({ name }))]
+    this.scale = [...this.scale, ...this.preScriptNames.map((name) => ({ name }))]
 
     this.choices.forEach((choice) => {
       // ensure _some_ category exists
@@ -333,8 +333,13 @@ class RushSelect extends ArrayPrompt {
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
-    if (!this.isScriptAvailable(scaleItemName, choice)) {
-      return choice.category === this.preScriptsText ? '' : padReplace(scaleItemName, '')
+    if (
+      !this.isScriptAvailable(scaleItemName, choice) &&
+      (choice.category === this.preScriptsText || this.preScriptNames.includes(scaleItemName))
+    ) {
+      return ''
+    } else if (!this.isScriptAvailable(scaleItemName, choice)) {
+      return padReplace(scaleItemName, '')
     } else if (choiceIsFocused && scaleItemIsSelected) {
       return this.styles.strong(this.styles.danger(scaleItemName))
     } else if (scaleItemIsSelected) {
