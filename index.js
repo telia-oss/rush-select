@@ -56,43 +56,56 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     return
   }
 
-  scriptsToRun = scriptsToRun
-    .filter(({ script }) => script !== undefined)
-    .filter(({ packageName }) => projects.some((p) => p.packageName === packageName))
-    // add in the rush package reference
-    .map(({ packageName, script }) => {
-      const package = projects.find((p) => p.packageName === packageName)
+  const scripts = {
+    pre: [],
+    normal: []
+  }
 
-      if (!package.packageJson.scripts || package.packageJson.scripts[script] === undefined) {
-        // it was an "n/a" thing in the menu which got selected, ignore it
-        return null
+  scriptsToRun
+    .filter(({ script }) => script !== undefined)
+    .forEach((item) => {
+      if (item === null) {
+        return
       }
 
-      return {
-        package,
-        packageName,
-        script: script
+      if (item.packageName === 'command') {
+        scripts.pre.push(item)
+        return
+      }
+
+      // add project reference
+      const package = projects.find((p) => p.packageName === item.packageName)
+      if (package) {
+        scripts.normal.push({
+          ...item,
+          package
+        })
       }
     })
-    .filter((project) => project !== null)
 
-  save(rushRootDir, scriptsToRun)
+  save(rushRootDir, scripts.normal)
 
-  const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
-  const longestSequence = scriptsToRun.reduce((val, curr) => {
-    const result = getPrefix(curr.packageName, curr.script).length
+  const runScripts = (scriptsToRun) => {
+    const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
+    const longestSequence = scriptsToRun.reduce((val, curr) => {
+      const result = getPrefix(curr.packageName, curr.script).length
 
-    return result > val ? result : val
-  }, 0)
+      return result > val ? result : val
+    }, 0)
 
-  return scriptsToRun.map(({ packageName, script, package }) =>
-    spawnStreaming(
-      'npm',
-      ['run', script],
-      { cwd: path.resolve(rushRootDir, package.projectFolder) },
-      getPrefix(packageName, script).padEnd(longestSequence, ' ')
+    return scriptsToRun.map(({ packageName, script, package }) =>
+      spawnStreaming(
+        'npm',
+        ['run', script],
+        { cwd: package ? path.resolve(rushRootDir, package.projectFolder) : rushRootDir },
+        getPrefix(packageName, script).padEnd(longestSequence, ' ')
+      )
     )
-  )
+  }
+
+  await runScripts(scripts.normal)
+  // TODO
+  // await runScripts(scripts.pre)
 }
 
 async function main() {

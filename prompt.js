@@ -632,11 +632,21 @@ class RushSelect extends ArrayPrompt {
 
   submit() {
     this.value = []
+
+    const getScriptName = (c) =>
+      c.category === this.preScriptsText
+        ? c.availableScripts[
+            Math.max(c.scaleIndex - (c.scale.length - this.preScriptNames.length - 1), 0)
+          ]
+        : c.availableScripts[c.scaleIndex]
+
     for (let choice of this.choices) {
-      if (choice.availableScripts[choice.scaleIndex] !== this.options.ignoreText) {
+      const script = getScriptName(choice)
+
+      if (script !== this.options.ignoreText) {
         this.value.push({
           packageName: choice.name,
-          script: choice.availableScripts[choice.scaleIndex]
+          script
         })
       }
     }
