@@ -58,7 +58,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
 
   const scripts = {
     pre: [],
-    normal: []
+    main: []
   }
 
   scriptsToRun
@@ -68,7 +68,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
         return
       }
 
-      if (item.packageName === 'command') {
+      if (item.packageName === 'rush') {
         scripts.pre.push(item)
         return
       }
@@ -76,36 +76,67 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
       // add project reference
       const package = projects.find((p) => p.packageName === item.packageName)
       if (package) {
-        scripts.normal.push({
+        scripts.main.push({
           ...item,
           package
         })
       }
     })
 
-  save(rushRootDir, scripts.normal)
+  save(rushRootDir, scripts.main)
 
-  const runScripts = (scriptsToRun) => {
-    const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
-    const longestSequence = scriptsToRun.reduce((val, curr) => {
-      const result = getPrefix(curr.packageName, curr.script).length
+  return scripts
+}
 
-      return result > val ? result : val
-    }, 0)
+const runScripts = (scriptsToRun) => {
+  const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
+  const longestSequence = scriptsToRun.reduce((val, curr) => {
+    const result = getPrefix(curr.packageName, curr.script).length
 
-    return scriptsToRun.map(({ packageName, script, package }) =>
+    return result > val ? result : val
+  }, 0)
+
+  return scriptsToRun.map(
+    ({ packageName, script, package, scriptExecutable = 'npm', scriptCommand = ['run'] }) =>
       spawnStreaming(
-        'npm',
-        ['run', script],
+        scriptExecutable,
+        scriptCommand.concat(script),
         { cwd: package ? path.resolve(rushRootDir, package.projectFolder) : rushRootDir },
         getPrefix(packageName, script).padEnd(longestSequence, ' ')
       )
-    )
-  }
+  )
+}
 
-  await runScripts(scripts.normal)
-  // TODO
-  // await runScripts(scripts.pre)
+// makes user able to CTRL + C during execution
+const awaitProcesses = async (processes) => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+  rl.on('SIGINT', () => {
+    processes.forEach((p) => p.kill('SIGINT'))
+    return { aborted: true, error: false }
+  })
+
+  let error = false
+
+  await Promise.all(
+    processes.map(
+      (p) =>
+        new Promise((resolve) => {
+          p.once('exit', (exitCode) => {
+            if (exitCode !== 0) {
+              error = true
+            }
+            resolve(exitCode)
+          })
+        })
+    )
+  )
+
+  rl.close()
+
+  return { aborted: false, error }
 }
 
 async function main() {
@@ -116,9 +147,9 @@ async function main() {
     const savedProjectScripts = load(rushRootDir)
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
-    let processes
+    let scripts
     try {
-      processes = await createRushPrompt(choices, allScriptNames, projects)
+      scripts = await createRushPrompt(choices, allScriptNames, projects)
     } catch (e) {
       if (e === '') {
         // prompt was aborted by user
@@ -128,26 +159,24 @@ async function main() {
       throw e
     }
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
+    console.log('Starting prescripts')
 
-    rl.on('SIGINT', () => {
-      processes.forEach((p) => p.kill('SIGINT'))
-    })
+    let anyAborted
+    let anyError
 
-    await Promise.all(
-      processes.map(
-        (p) =>
-          new Promise((resolve) => {
-            p.once('exit', resolve)
-            p.once('error', resolve)
-          })
-      )
-    )
+    // run through the prescripts sequentially
+    for (let preScript of scripts.pre) {
+      let { aborted, error } = await awaitProcesses(runScripts([preScript]), true)
 
-    rl.close()
+      anyAborted = anyAborted || aborted
+      anyError = anyError || error
+    }
+
+    if (!anyAborted && !anyError) {
+      console.log('Starting main scripts')
+
+      await awaitProcesses(runScripts(scripts.main))
+    }
 
     // eslint-disable-next-line
   } while (true)

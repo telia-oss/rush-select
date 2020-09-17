@@ -18,7 +18,7 @@ class RushSelect extends ArrayPrompt {
 
     super(options)
 
-    this.preScriptsText = 'pre-scripts'
+    this.preScriptsText = 'pre-scripts (executes from top to bottom)'
 
     this.widths = [].concat(options.messageWidth || 50)
     this.align = [].concat(options.align || 'left')
@@ -33,12 +33,15 @@ class RushSelect extends ArrayPrompt {
         .map((v, i) => ({ name: i + start }))
     }
 
-    this.preScriptNames = ['rush install', 'rush update', 'rush build']
+    this.preScriptNames = ['install', 'update', 'build']
 
     this.choices.unshift({
-      name: 'command',
+      name: 'rush',
+      initial: -1,
       category: this.preScriptsText,
-      availableScripts: ['ignore', ...this.preScriptNames]
+      availableScripts: ['ignore', ...this.preScriptNames],
+      scriptExecutable: 'rush',
+      scriptCommand: []
     })
 
     this.scale = [...this.scale, ...this.preScriptNames.map((name) => ({ name }))]
@@ -224,7 +227,7 @@ class RushSelect extends ArrayPrompt {
       return nextIndex
     }
 
-    throw new Error('no scale scrip item available to move to in that direction')
+    throw new Error('no scale script item available to move to in that direction')
   }
 
   right() {
@@ -238,7 +241,7 @@ class RushSelect extends ArrayPrompt {
       this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
       return this.render()
     } catch (e) {
-      if (e.message !== 'no scale scrip item available to move to in that direction') {
+      if (e.message !== 'no scale script item available to move to in that direction') {
         throw e
       }
     }
@@ -282,7 +285,7 @@ class RushSelect extends ArrayPrompt {
       this.checkIfPackageScriptInstanceShouldBeRemoved(choice, this.choices)
       return this.render()
     } catch (e) {
-      if (e.message !== 'no scale scrip item available to move to in that direction') {
+      if (e.message !== 'no scale script item available to move to in that direction') {
         throw e
       }
     }
@@ -646,7 +649,9 @@ class RushSelect extends ArrayPrompt {
       if (script !== this.options.ignoreText) {
         this.value.push({
           packageName: choice.name,
-          script
+          script,
+          scriptExecutable: choice.scriptExecutable,
+          scriptCommand: choice.scriptCommand
         })
       }
     }
