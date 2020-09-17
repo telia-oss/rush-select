@@ -181,8 +181,8 @@ class RushSelect extends ArrayPrompt {
   checkIfPackageScriptInstanceShouldBeAdded(choice, choicesToModify) {
     let anyIgnoresLeft = choicesToModify.some(
       (ch) =>
-        ch.name === choice.name &&
-        (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
+        (ch.name === choice.name && ch.scaleIndex !== undefined && ch.scaleIndex === 0) ||
+        ch.initial === 0
     )
 
     const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
@@ -428,6 +428,18 @@ class RushSelect extends ArrayPrompt {
 
     let maxScaleItemsOnScreen = 11
 
+    const longestSequence = this.choices.reduce((val, curr) => {
+      const result = curr.name.length
+
+      return result > val ? result : val
+    }, 0)
+
+    const shortestSequence = this.choices.reduce((val, curr) => {
+      const result = curr.name.length
+
+      return result < val ? result : val
+    }, longestSequence)
+
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
     let ind = this.indent(choice)
@@ -435,7 +447,7 @@ class RushSelect extends ArrayPrompt {
     let scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
     let margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
-    this.widths[0] = Math.min(this.widths[0], this.width - this.scaleLength - margin.length)
+    this.widths[0] = Math.min(this.widths[0], longestSequence + margin - shortestSequence)
     let msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
@@ -474,7 +486,7 @@ class RushSelect extends ArrayPrompt {
         stripAnsi(Array.isArray(renderedChoice) ? renderedChoice[0] : renderedChoice).length
 
       maxScaleItemsOnScreen--
-    } while (columnSpaceRemaining < 0 && maxScaleItemsOnScreen > 0)
+    } while (columnSpaceRemaining < 25 && maxScaleItemsOnScreen > 0)
 
     return renderedChoice
   }
