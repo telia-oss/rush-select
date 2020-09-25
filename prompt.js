@@ -204,12 +204,16 @@ class RushSelect extends ArrayPrompt {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
-  checkIfPackageScriptInstanceShouldBeAdded(choice, choicesToModify) {
-    let anyIgnoresLeft = choicesToModify.some(
+  ignoresLeftFromChoiceScripts(choice, choicesToModify) {
+    return choicesToModify.filter(
       (ch) =>
-        (ch.name === choice.name && ch.scaleIndex !== undefined && ch.scaleIndex === 0) ||
-        ch.initial === 0
-    )
+        ch.name === choice.name &&
+        (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0 || isNaN(ch.initial))
+    ).length
+  }
+
+  checkIfPackageScriptInstanceShouldBeAdded(choice, choicesToModify) {
+    let anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify) > 0
 
     const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
@@ -280,19 +284,15 @@ class RushSelect extends ArrayPrompt {
       (ch) => ch.name === choice.name
     ).length
 
-    let ignoresLeft = choicesToModify.filter(
-      (ch) =>
-        ch.name === choice.name &&
-        (ch.scaleIndex !== undefined ? ch.scaleIndex === 0 : ch.initial === 0)
-    ).length
+    let ignoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify)
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
-      let isFirstOccurrence =
-        choicesToModify.findIndex((ch) => ch.name === choice.name) === choice.index
+      let isLastOccurrence =
+        choicesToModify.filter((ch) => ch.name === choice.name).pop().index === choice.index
 
       choicesToModify.splice(choice.index, 1)
 
-      if (!isFirstOccurrence) {
+      if (isLastOccurrence) {
         // move cursor up one step since we're deleting where the cursor currently is
         this.index--
       }
