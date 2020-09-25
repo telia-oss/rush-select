@@ -2,6 +2,15 @@
 module.exports = {
   replaceWithCharacter: (text, character = ' ') => text.padReplace(/./g, character),
 
+  padAround: (text, padLength) => {
+    let result = ''
+
+    result += ''.padStart(Math.floor(padLength / 2 - text.length), ' ')
+    result += text
+    result += ''.padEnd(Math.ceil(padLength / 2 - text.length), ' ')
+    return result
+  },
+
   padReplace: (text, replaceText = '') => {
     let result = ''
 

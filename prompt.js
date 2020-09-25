@@ -5,8 +5,6 @@ const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 const fuzzy = require('fuzzy')
 
-const { padReplace } = require('./string-utils')
-
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
     options.ignoreText = options.ignoreText || 'ignore'
@@ -33,7 +31,7 @@ class RushSelect extends ArrayPrompt {
         .map((v, i) => ({ name: i + start }))
     }
 
-    this.preScriptNames = ['install', 'update', 'build']
+    this.preScriptNames = [':pre:install:pre:', ':pre:update:pre:', ':pre:build:pre:']
 
     this.choices.unshift({
       name: 'rush',
@@ -75,6 +73,34 @@ class RushSelect extends ArrayPrompt {
 
     // for the filtering, we store the choices here
     this.allChoices = this.choices
+
+    this.longestPackageNameLength = this.allChoices.reduce((val, curr) => {
+      const result = curr.name.length + 4
+
+      return result > val ? result : val
+    }, 0)
+
+    this.shortestPackageNameLength = this.allChoices.reduce((val, curr) => {
+      const result = curr.name.length
+
+      return result < val ? result : val
+    }, this.longestPackageNameLength)
+
+    this.longestScaleItemNameLength = Math.min(
+      this.allChoices.reduce((longest, currentChoice) => {
+        let longestInsideChoice = currentChoice.availableScripts.reduce(
+          (longestInsideChoiceSoFar, currentScaleItem) => {
+            return currentScaleItem.length > longestInsideChoiceSoFar
+              ? currentScaleItem.length
+              : longestInsideChoiceSoFar
+          },
+          0
+        )
+
+        return longestInsideChoice > longest ? longestInsideChoice : longest
+      }, 0),
+      15
+    )
 
     this.filterText = ''
     const keyPressHandler = (ch, key) => {
@@ -332,6 +358,7 @@ class RushSelect extends ArrayPrompt {
 
   scaleIndicator(choice, item, choiceIndex) {
     const scaleItemName = this.scale[item.index].name
+    const scaleItemNameToDisplay = scaleItemName.replace(/:pre:/g, '')
 
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
@@ -342,15 +369,16 @@ class RushSelect extends ArrayPrompt {
     ) {
       return ''
     } else if (!this.isScriptAvailable(scaleItemName, choice)) {
-      return padReplace(scaleItemName, '')
+      return ''
+      // return padReplace(scaleItemName, '')
     } else if (choiceIsFocused && scaleItemIsSelected) {
-      return this.styles.strong(this.styles.danger(scaleItemName))
+      return this.styles.strong(this.styles.danger(scaleItemNameToDisplay))
     } else if (scaleItemIsSelected) {
-      return this.styles.strong(this.styles.success(scaleItemName))
+      return this.styles.strong(this.styles.success(scaleItemNameToDisplay))
     } else if (choiceIsFocused) {
-      return this.styles.danger(scaleItemName)
+      return this.styles.danger(scaleItemNameToDisplay)
     }
-    return this.styles.strong(scaleItemName)
+    return this.styles.strong(scaleItemNameToDisplay)
   }
 
   /**
@@ -358,9 +386,13 @@ class RushSelect extends ArrayPrompt {
    */
 
   renderScale(choice, i, maxScaleItemsOnScreen) {
-    let scaleItems = choice.scale.map((item) => this.scaleIndicator(choice, item, i))
+    let scaleItems = choice.scale
+      .map((item) => this.scaleIndicator(choice, item, i))
+      .filter((i) => i !== '')
 
-    const choiceScaleIndex = this.choices[this.index].scaleIndex
+    const choiceScaleIndex = choice.scale
+      .filter((s) => this.isScriptAvailable(this.scale[s.index].name, choice))
+      .findIndex((item) => item.index === this.choices[i].scaleIndex)
     let scrollsFromLeftEdge = null
     let scrollsFromRightEdge = null
 
@@ -426,19 +458,7 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let maxScaleItemsOnScreen = 11
-
-    const longestSequence = this.choices.reduce((val, curr) => {
-      const result = curr.name.length
-
-      return result > val ? result : val
-    }, 0)
-
-    const shortestSequence = this.choices.reduce((val, curr) => {
-      const result = curr.name.length
-
-      return result < val ? result : val
-    }, longestSequence)
+    let maxScaleItemsOnScreen = 4
 
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
@@ -447,7 +467,10 @@ class RushSelect extends ArrayPrompt {
     let scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
     let margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
-    this.widths[0] = Math.min(this.widths[0], longestSequence + margin - shortestSequence)
+    this.widths[0] = Math.min(
+      this.widths[0],
+      this.longestPackageNameLength + margin - this.shortestPackageNameLength
+    )
     let msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
@@ -472,7 +495,7 @@ class RushSelect extends ArrayPrompt {
     let renderedChoice
     let columnSpaceRemaining
 
-    let termColumns = process.stdout.columns
+    let termColumns = 200 || process.stdout.columns
 
     do {
       scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
