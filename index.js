@@ -43,6 +43,27 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     margin: [0, 1, 0, 0],
     styles: { primary: colors.grey },
     choices,
+    executionGroups: [
+      {
+        category: 'pre-scripts (executes from top to bottom)',
+        name: 'rush',
+        initial: 0,
+        scriptNames: ['ignore', 'install', 'update'],
+        scriptExecutable: 'rush',
+        customSortText: '_',
+        scriptCommand: []
+      },
+      {
+        category: 'rush build (recommended: smart)',
+        name: 'rush build',
+        initial: 1,
+        allowMultipleScripts: false,
+        scriptNames: ['ignore', 'smart', 'regular', 'rebuild'],
+        scriptExecutable: 'rush',
+        customSortText: '__',
+        scriptCommand: []
+      }
+    ],
     edgeLength: 2,
     // the description above the items
     scale: allScriptNames.sort().map((name) => ({
@@ -58,6 +79,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
 
   const scripts = {
     pre: [],
+    rushBuild: undefined,
     main: []
   }
 
@@ -70,6 +92,11 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
 
       if (item.packageName === 'rush') {
         scripts.pre.push(item)
+        return
+      }
+
+      if (item.packageName === 'rush build') {
+        scripts.rushBuild = item
         return
       }
 
@@ -159,16 +186,72 @@ async function main() {
       throw e
     }
 
-    console.log('Starting prescripts')
+    console.log('Starting pre-scripts')
 
     let anyAborted
     let anyError
 
     // run through the prescripts sequentially
     for (let preScript of scripts.pre) {
-      let { aborted, error } = await awaitProcesses(runScripts([preScript]), true)
+      let { aborted, error } = await awaitProcesses(runScripts([preScript]))
 
       anyAborted = anyAborted || aborted
+      anyError = anyError || error
+    }
+
+    if (!anyAborted && !anyError) {
+      let rushBuildProcess
+
+      // get unique package names that are set to run scripts
+      let packagesThatWillRunScripts = Array.from(
+        scripts.main.reduce((set, item) => {
+          set.add(item.packageName)
+          return set
+        }, new Set())
+      )
+
+      if (scripts.rushBuild.script === 'smart') {
+        const executable = 'rush'
+        const args = ['build'].concat(packagesThatWillRunScripts.map((p) => ['--to', p]).flat())
+
+        console.log('Starting smart rush build step: ' + executable + ' ' + args.join(' '))
+
+        rushBuildProcess = spawnStreaming(
+          executable,
+          args,
+          { cwd: rushRootDir },
+          'smart rush build'
+        )
+      } else if (scripts.rushBuild.script === 'regular') {
+        const executable = 'rush'
+        const args = ['build']
+
+        console.log('Starting regular rush build step: ' + executable + ' ' + args.join(' '))
+
+        rushBuildProcess = spawnStreaming(
+          executable,
+          args,
+          { cwd: rushRootDir },
+          'incremental rush build'
+        )
+      } else if (scripts.rushBuild.script === 'rebuild') {
+        const executable = 'rush'
+        const args = ['rebuild']
+
+        console.log(
+          'Starting rush rebuild step, building everything. Grab coffee.. ' +
+            executable +
+            ' ' +
+            args.join(' ')
+        )
+
+        rushBuildProcess = spawnStreaming(executable, args, { cwd: rushRootDir }, 'rush rebuild')
+      }
+
+      let { aborted, error } = await awaitProcesses([rushBuildProcess])
+
+      anyAborted = anyAborted || aborted
+      // weirdly, rush doesn't seem to exit with non-zero when builds fail..
       anyError = anyError || error
     }
 
