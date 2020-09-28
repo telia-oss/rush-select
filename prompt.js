@@ -16,7 +16,24 @@ class RushSelect extends ArrayPrompt {
 
     super(options)
 
-    this.preScriptsText = 'pre-scripts (executes from top to bottom)'
+    this.executionGroups = [
+      {
+        preScriptsText: 'pre-scripts (executes from top to bottom)',
+        name: 'rush',
+        preScriptNames: [':rush:install', ':rush:update'],
+        scriptExecutable: 'rush',
+        customSortText: '__',
+        scriptCommand: []
+      }
+      // {
+      //   preScriptsText: 'rush build (recommended: auto)',
+      //   preScriptNames: [
+      //     ':rushbuild:never:rushbuild:',
+      //     ':rushbuild:auto:rushbuild:',
+      //     ':rushbuild:rebuild all:rushbuild:'
+      //   ]
+      // }
+    ]
 
     this.widths = [].concat(options.messageWidth || 50)
     this.align = [].concat(options.align || 'left')
@@ -31,18 +48,29 @@ class RushSelect extends ArrayPrompt {
         .map((v, i) => ({ name: i + start }))
     }
 
-    this.preScriptNames = [':pre:install:pre:', ':pre:update:pre:', ':pre:build:pre:']
+    // this.preScriptNames = [':pre:install:pre:', ':pre:update:pre:']
 
-    this.choices.unshift({
-      name: 'rush',
-      initial: -1,
-      category: this.preScriptsText,
-      availableScripts: ['ignore', ...this.preScriptNames],
-      scriptExecutable: 'rush',
-      scriptCommand: []
+    // this.rushBuildOptions = [
+    //   ':rushbuild:never:rushbuild:',
+    //   ':rushbuild:auto:rushbuild:',
+    //   ':rushbuild:rebuild all:rushbuild:'
+    // ]
+
+    this.executionGroups.forEach((executionGroup, index) => {
+      this.choices.unshift({
+        ...executionGroup,
+        name: executionGroup.name,
+        scriptExecutable: executionGroup.scriptExecutable,
+        scriptCommand: executionGroup.scriptCommand,
+        initial: -1,
+        category: executionGroup.preScriptsText,
+        preScriptNames: executionGroup.preScriptNames,
+        executionGroupIndex: index,
+        availableScripts: ['ignore', ...executionGroup.preScriptNames.map((name) => name)]
+      })
+
+      this.scale = [...this.scale, ...executionGroup.preScriptNames.map((name) => ({ name }))]
     })
-
-    this.scale = [...this.scale, ...this.preScriptNames.map((name) => ({ name }))]
 
     this.choices.forEach((choice) => {
       // ensure _some_ category exists
@@ -59,8 +87,6 @@ class RushSelect extends ArrayPrompt {
     this.choices = this.choices.sort((a, b) => {
       const customSortOrder = (input) => {
         switch (input) {
-          case this.preScriptsText:
-            return '_'
           case this.uncategorizedText:
             return '__'
           default:
@@ -68,7 +94,10 @@ class RushSelect extends ArrayPrompt {
         }
       }
 
-      return customSortOrder(a.category) < customSortOrder(b.category) ? -1 : 1
+      return customSortOrder(a.customSortText || a.category) <
+        customSortOrder(b.customSortText || b.category)
+        ? -1
+        : 1
     })
 
     // for the filtering, we store the choices here
@@ -358,17 +387,19 @@ class RushSelect extends ArrayPrompt {
 
   scaleIndicator(choice, item, choiceIndex) {
     const scaleItemName = this.scale[item.index].name
-    const scaleItemNameToDisplay = scaleItemName.replace(/:pre:/g, '')
+    const scaleItemNameToDisplay = scaleItemName.replace(/^:.+?:/, '')
 
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
-    if (
-      !this.isScriptAvailable(scaleItemName, choice) &&
-      (choice.category === this.preScriptsText || this.preScriptNames.includes(scaleItemName))
-    ) {
-      return ''
-    } else if (!this.isScriptAvailable(scaleItemName, choice)) {
+    // if (
+    //   !this.isScriptAvailable(scaleItemName, choice) &&
+    //   (choice.category === 'preScriptsText? TODO' ||
+    //     (choice.preScriptNames && choice.preScriptNames.includes(scaleItemName)))
+    // ) {
+    //   return ''
+    // } else  ...
+    if (!this.isScriptAvailable(scaleItemName, choice)) {
       return ''
       // return padReplace(scaleItemName, '')
     } else if (choiceIsFocused && scaleItemIsSelected) {
@@ -381,22 +412,25 @@ class RushSelect extends ArrayPrompt {
     return this.styles.strong(scaleItemNameToDisplay)
   }
 
+  getChoiceAvailableScriptIndex(choice) {
+    return choice.scale
+      .filter((s) => this.isScriptAvailable(this.scale[s.index].name, choice))
+      .findIndex((item) => item.index === choice.scaleIndex)
+  }
+
   /**
    * Render the actual scale => ◯────◯────◉────◯────◯
    */
-
   renderScale(choice, i, maxScaleItemsOnScreen) {
     let scaleItems = choice.scale
       .map((item) => this.scaleIndicator(choice, item, i))
       .filter((i) => i !== '')
 
-    const choiceScaleIndex = choice.scale
-      .filter((s) => this.isScriptAvailable(this.scale[s.index].name, choice))
-      .findIndex((item) => item.index === this.choices[i].scaleIndex)
+    const choiceScaleIndex = this.getChoiceAvailableScriptIndex(choice)
     let scrollsFromLeftEdge = null
     let scrollsFromRightEdge = null
 
-    if (choice.category !== this.preScriptsText && scaleItems.length > maxScaleItemsOnScreen) {
+    if (scaleItems.length > maxScaleItemsOnScreen) {
       const scrollingIndex =
         choiceScaleIndex -
         (choiceScaleIndex % maxScaleItemsOnScreen) +
@@ -671,15 +705,8 @@ class RushSelect extends ArrayPrompt {
   submit() {
     this.value = []
 
-    const getScriptName = (c) =>
-      c.category === this.preScriptsText
-        ? c.availableScripts[
-            Math.max(c.scaleIndex - (c.scale.length - this.preScriptNames.length - 1), 0)
-          ]
-        : c.availableScripts[c.scaleIndex]
-
     for (let choice of this.choices) {
-      const script = getScriptName(choice)
+      const script = choice.availableScripts[this.getChoiceAvailableScriptIndex(choice)]
 
       if (script !== this.options.ignoreText) {
         this.value.push({
