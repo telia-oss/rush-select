@@ -34,7 +34,7 @@ const isScriptNameAllowed = (scriptName) =>
 const rushRootDir = getRushRootDir()
 
 const createRushPrompt = async (choices, allScriptNames, projects) => {
-  let scriptsToRun = await new RushSelect({
+  let rushSelect = new RushSelect({
     name: 'rush-select',
     message:
       (global.extraWarn ? global.extraWarn + '\n\n' : '') +
@@ -69,12 +69,12 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     scale: allScriptNames.sort().map((name) => ({
       name
     }))
-  }).run()
+  })
+
+  let scriptsToRun = await rushSelect.run()
 
   if (scriptsToRun.length === 0) {
-    console.log('No scripts specified to run, exiting.')
-
-    return
+    return null
   }
 
   const scripts = {
@@ -101,11 +101,11 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
       }
 
       // add project reference
-      const package = projects.find((p) => p.packageName === item.packageName)
-      if (package) {
+      const project = projects.find((p) => p.packageName === item.packageName)
+      if (project) {
         scripts.main.push({
           ...item,
-          package
+          project
         })
       }
     })
@@ -124,11 +124,11 @@ const runScripts = (scriptsToRun) => {
   }, 0)
 
   return scriptsToRun.map(
-    ({ packageName, script, package, scriptExecutable = 'npm', scriptCommand = ['run'] }) =>
+    ({ packageName, script, project, scriptExecutable = 'npm', scriptCommand = ['run'] }) =>
       spawnStreaming(
         scriptExecutable,
         scriptCommand.concat(script),
-        { cwd: package ? path.resolve(rushRootDir, package.projectFolder) : rushRootDir },
+        { cwd: project ? path.resolve(rushRootDir, project.projectFolder) : rushRootDir },
         getPrefix(packageName, script).padEnd(longestSequence, ' ')
       )
   )
@@ -186,6 +186,10 @@ async function main() {
       throw e
     }
 
+    if (scripts === null) {
+      return
+    }
+
     console.log('Starting pre-scripts')
 
     let anyAborted
@@ -210,49 +214,51 @@ async function main() {
         }, new Set())
       )
 
-      if (scripts.rushBuild.script === 'smart') {
-        const executable = 'rush'
-        const args = ['build'].concat(packagesThatWillRunScripts.map((p) => ['--to', p]).flat())
+      if (scripts.rushBuild) {
+        if (scripts.rushBuild.script === 'smart') {
+          const executable = 'rush'
+          const args = ['build'].concat(packagesThatWillRunScripts.map((p) => ['--to', p]).flat())
 
-        console.log('Starting smart rush build step: ' + executable + ' ' + args.join(' '))
+          console.log('Starting smart rush build step: ' + executable + ' ' + args.join(' '))
 
-        rushBuildProcess = spawnStreaming(
-          executable,
-          args,
-          { cwd: rushRootDir },
-          'smart rush build'
-        )
-      } else if (scripts.rushBuild.script === 'regular') {
-        const executable = 'rush'
-        const args = ['build']
+          rushBuildProcess = spawnStreaming(
+            executable,
+            args,
+            { cwd: rushRootDir },
+            'smart rush build'
+          )
+        } else if (scripts.rushBuild.script === 'regular') {
+          const executable = 'rush'
+          const args = ['build']
 
-        console.log('Starting regular rush build step: ' + executable + ' ' + args.join(' '))
+          console.log('Starting regular rush build step: ' + executable + ' ' + args.join(' '))
 
-        rushBuildProcess = spawnStreaming(
-          executable,
-          args,
-          { cwd: rushRootDir },
-          'incremental rush build'
-        )
-      } else if (scripts.rushBuild.script === 'rebuild') {
-        const executable = 'rush'
-        const args = ['rebuild']
+          rushBuildProcess = spawnStreaming(
+            executable,
+            args,
+            { cwd: rushRootDir },
+            'incremental rush build'
+          )
+        } else if (scripts.rushBuild.script === 'rebuild') {
+          const executable = 'rush'
+          const args = ['rebuild']
 
-        console.log(
-          'Starting rush rebuild step, building everything. Grab coffee.. ' +
-            executable +
-            ' ' +
-            args.join(' ')
-        )
+          console.log(
+            'Starting rush rebuild step, building everything. Grab coffee.. ' +
+              executable +
+              ' ' +
+              args.join(' ')
+          )
 
-        rushBuildProcess = spawnStreaming(executable, args, { cwd: rushRootDir }, 'rush rebuild')
+          rushBuildProcess = spawnStreaming(executable, args, { cwd: rushRootDir }, 'rush rebuild')
+        }
+
+        let { aborted, error } = await awaitProcesses([rushBuildProcess])
+
+        anyAborted = anyAborted || aborted
+        // weirdly, rush doesn't seem to exit with non-zero when builds fail..
+        anyError = anyError || error
       }
-
-      let { aborted, error } = await awaitProcesses([rushBuildProcess])
-
-      anyAborted = anyAborted || aborted
-      // weirdly, rush doesn't seem to exit with non-zero when builds fail..
-      anyError = anyError || error
     }
 
     if (!anyAborted && !anyError) {
@@ -265,4 +271,4 @@ async function main() {
   } while (true)
 }
 
-main()
+module.exports = main()

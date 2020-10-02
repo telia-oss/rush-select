@@ -41,7 +41,8 @@
       "request": "launch",
       "name": "Jest",
       "runtimeExecutable": "node",
-      "cwd": "${fileDirname}",
+      "smartStep": true,
+      "cwd": "${workspaceFolder}",
       "args": ["./node_modules/jest/bin/jest.js", "--runInBand", "--no-cache", "--watch"],
       "internalConsoleOptions": "neverOpen",
       "console": "integratedTerminal"

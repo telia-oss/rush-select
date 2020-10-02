@@ -22,7 +22,7 @@ module.exports = {
     let projectsToRunByNameJsonFriendly = []
     projectsToRun.forEach((project) => {
       let jsonFriendly = { ...project }
-      delete jsonFriendly.package
+      delete jsonFriendly.project
 
       projectsToRunByNameJsonFriendly.push(jsonFriendly)
     })

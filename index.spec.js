@@ -1,59 +1,171 @@
-jest.mock('enquirer', () => ({
-  Scale: function () {
-    this.run = function () {
-      return new Promise((resolve) => resolve())
-    }
+// let mockLastSavedResult = {}
+// let mockLastLoadedResult = {}
+
+const setup = async () => {
+  global.console = {
+    log: jest.fn(), // console.log are ignored in tests
+
+    // Keep native behaviour for other methods, use those to print out things in your own tests, not `console.log`
+    error: console.error,
+    warn: console.warn,
+    info: console.info,
+    debug: console.debug
   }
-}))
 
-let mockLastSavedResult = {}
-let mockLastLoadedResult = {}
+  jest.mock('./save-load.js', () => ({
+    save: jest.fn((directory, data) => {
+      mockLastSavedResult = data
+    }),
+    load: jest.fn(() => {
+      // faked stored data
+      mockLastLoadedResult = []
 
-jest.mock('./save-load.js', () => ({
-  save: jest.fn((textContent) => {
-    mockLastSavedResult = JSON.parse(textContent)
-  }),
-  load: jest.fn(() => {
-    // faked stored data
-    mockLastLoadedResult = {
-      'mfe-package': 'build:watch'
-    }
-
-    return mockLastLoadedResult
-  })
-}))
-
-jest.mock('find-up', () => ({
-  sync: jest.fn(() => {
-    return 'mocks/rush.json'
-  })
-}))
-
-jest.mock('@lerna/child-process', () => ({
-  spawnStreaming: jest.fn()
-}))
-
-jest.mock('./create-prompt.js', () => (/*choices, scriptsList*/) => ({
-  run: jest.fn(() =>
-    Promise.resolve({
-      '# MICRO-FRONTENDS': 2,
-      '-   mfe-package': 1,
-      '# TOOLING': 2,
-      '-   cli-package': 0,
-      '# LIBRARIES': 2,
-      '-   browser-package': -1
+      return mockLastLoadedResult
     })
-  )
-}))
+  }))
+
+  jest.mock('find-up', () => ({
+    sync: jest.fn(() => {
+      return 'mocks/rush.json'
+    })
+  }))
+
+  jest.mock('@lerna/child-process', () => ({
+    spawnStreaming: jest.fn(() => ({
+      once: () => Promise.resolve()
+    }))
+  }))
+
+  jest.mock('./choice-generation.js', () => ({
+    createChoices: jest.fn(() => ({
+      choices: [
+        {
+          name: 'browser-package',
+          category: 'libraries',
+          availableScripts: ['build', 'build:prod', 'test']
+        },
+        {
+          name: 'mfe-package-a',
+          category: 'micro-frontends',
+          availableScripts: ['build', 'build:prod']
+        },
+        {
+          name: 'mfe-package-b',
+          category: 'micro-frontends',
+          availableScripts: ['build', 'build:prod']
+        },
+        {
+          name: 'cli-package',
+          category: 'tooling',
+          availableScripts: ['build', 'build:prod']
+        },
+        {
+          name: 'random-package',
+          category: undefined,
+          availableScripts: ['build', 'build:prod']
+        }
+      ],
+      allScriptNames: ['build', 'build:prod', 'test']
+    })),
+    setInitialValuesOnChoices: jest.fn()
+  }))
+
+  let mockPromptInstance
+  let mockRunPromise
+  let mockReadyResolve
+  let promptReadyPromise = new Promise((resolve) => {
+    mockReadyResolve = resolve
+  })
+
+  jest.mock('./prompt', () => {
+    return class RushSelect extends jest.requireActual('./prompt.js') {
+      constructor(options) {
+        super(options)
+        mockPromptInstance = this
+
+        this.stdout = {
+          write: jest.fn(),
+          removeListener: jest.fn()
+        }
+      }
+
+      async run() {
+        mockRunPromise = super.run()
+        return mockRunPromise
+
+        // returning the answers immediately here can be helpful too.
+        // return []
+      }
+
+      async reset() {
+        await super.reset()
+
+        mockReadyResolve()
+      }
+    }
+  })
+
+  // start the prompt
+  require('./index.js')
+
+  // wait for initial render completion
+  await promptReadyPromise
+
+  const submitAndRun = () => {
+    // perform and await the final submit step
+    mockPromptInstance.submit()
+    return mockRunPromise
+  }
+
+  return {
+    promptInstance: mockPromptInstance,
+    submitAndRun
+  }
+}
 
 describe('index.js', () => {
   beforeEach(async () => {
     jest.resetModules()
-
-    await require('./index.js')
+    jest.clearAllMocks()
   })
 
-  test('save data should match last loaded data', async () => {
-    expect(mockLastSavedResult).toEqual(mockLastLoadedResult)
+  test('submitting immediately should leave basically empty results', async () => {
+    const { submitAndRun } = await setup()
+
+    expect(await submitAndRun()).toEqual([
+      {
+        packageName: 'rush build',
+        script: 'smart',
+        scriptExecutable: 'rush',
+        scriptCommand: []
+      }
+    ])
   })
+
+  test('should list some packages', async () => {
+    const { promptInstance, submitAndRun } = await setup()
+
+    // set random-package to build-prod
+    await promptInstance.down()
+    await promptInstance.down()
+    await promptInstance.right()
+    await promptInstance.right()
+
+    expect(await submitAndRun()).toEqual([
+      {
+        packageName: 'rush build',
+        script: 'smart',
+        scriptExecutable: 'rush',
+        scriptCommand: []
+      },
+      {
+        packageName: 'random-package',
+        script: 'build:prod',
+        scriptExecutable: undefined,
+        scriptCommand: undefined
+      }
+    ])
+  })
+
+  // TODO: Make a test that shows how filtering breaks the navigation
 })

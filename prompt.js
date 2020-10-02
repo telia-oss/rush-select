@@ -220,7 +220,7 @@ class RushSelect extends ArrayPrompt {
   ignoresLeftFromChoiceScripts(choice, choicesToModify) {
     let ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
-    return choicesToModify.filter(
+    return this.choices.filter(
       (ch) =>
         ch.name === choice.name &&
         (ch.scaleIndex !== undefined
@@ -256,6 +256,16 @@ class RushSelect extends ArrayPrompt {
         initial: specialIndexes ? specialIndexes[0].index : 0,
         scaleIndex: specialIndexes ? specialIndexes[0].index : 0
       })
+
+      if(this.filterText !== '') {
+        this.allChoices.splice(choice.index + 1, 0, {
+          ...choice,
+          message: choice.name,
+          index: choice.index + 1,
+          initial: specialIndexes ? specialIndexes[0].index : 0,
+          scaleIndex: specialIndexes ? specialIndexes[0].index : 0
+        })
+      }
 
       choicesToModify.slice(choice.index + 2).forEach((ch) => ch.index++)
     }
