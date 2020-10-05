@@ -65,21 +65,7 @@ class RushSelect extends ArrayPrompt {
       choice.initial++
     })
 
-    this.choices = this.choices.sort((a, b) => {
-      const customSortOrder = (input) => {
-        switch (input) {
-          case this.uncategorizedText:
-            return '`'
-          default:
-            return input
-        }
-      }
-
-      return customSortOrder(a.customSortText || a.category) <
-        customSortOrder(b.customSortText || b.category)
-        ? -1
-        : 1
-    })
+    this.choices = this.getSortedChoices(this.choices)
 
     // for the filtering, we store all choices here
     this.allChoices = this.choices
@@ -132,10 +118,29 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
+  getSortedChoices(choices) {
+    return choices.sort((a, b) => {
+      const customSortOrder = (input) => {
+        switch (input) {
+          case this.uncategorizedText:
+            return '`'
+          default:
+            return input
+        }
+      }
+
+      return customSortOrder(a.customSortText || a.category) <
+        customSortOrder(b.customSortText || b.category)
+        ? -1
+        : 1
+    })
+  }
+
   onKeyPress(ch, key) {
     const noFilterPreviouslyApplied = this.filterText === ''
+    const wasDelete = this.filterText !== '' && key.action === 'delete'
 
-    if (this.filterText !== '' && key.action === 'delete') {
+    if (wasDelete) {
       this.filterText = this.filterText.substring(0, this.filterText.length - 1)
     } else if (
       key.action !== 'delete' &&
@@ -152,20 +157,18 @@ class RushSelect extends ArrayPrompt {
       return
     }
 
-    if (this.filterText !== '' && noFilterPreviouslyApplied) {
-      // ensure we have all the extra lines by extra script instances stored
-      // before we start filtering the choices
-      this.allChoices = this.choices
+    if (this.filterText !== '') {
+      if (noFilterPreviouslyApplied) {
+        // ensure we have all the extra lines by extra script instances stored
+        // before we start filtering the choices
+        this.allChoices = this.choices
+      }
+
+      this.choices = this.getFilteredChoices(this.filterText, this.allChoices)
+    } else if (this.filterText === '' && !noFilterPreviouslyApplied) {
+      // back to no filtering, restore the view
+      this.choices = this.allChoices
     }
-
-    this.choices = this.getFilteredChoices(this.filterText, this.allChoices)
-
-    this.choices.forEach((choice) =>
-      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
-    )
-    this.choices.forEach((choice) =>
-      this.checkIfPackageScriptInstanceShouldBeRemoved(choice, this.choices)
-    )
 
     this.index = 0
     this.render()
@@ -217,7 +220,7 @@ class RushSelect extends ArrayPrompt {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
-  ignoresLeftFromChoiceScripts(choice, choicesToModify) {
+  ignoresLeftFromChoiceScripts(choice) {
     let ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
     return this.choices.filter(
@@ -239,7 +242,7 @@ class RushSelect extends ArrayPrompt {
       specialIndexes = this.getChoiceAvailableScriptIndexes(choice)
     }
 
-    let anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify) > 0
+    let anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice) > 0
 
     const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
@@ -249,24 +252,25 @@ class RushSelect extends ArrayPrompt {
       !anyIgnoresLeft &&
       choiceCountDerivedFromCurrentPackage < choice.availableScripts.length - 1
     ) {
-      choicesToModify.splice(choice.index + 1, 0, {
+      let newChoiceWithIgnoreSelected = {
         ...choice,
         message: choice.name,
         index: choice.index + 1,
         initial: specialIndexes ? specialIndexes[0].index : 0,
         scaleIndex: specialIndexes ? specialIndexes[0].index : 0
-      })
-
-      if(this.filterText !== '') {
-        this.allChoices.splice(choice.index + 1, 0, {
-          ...choice,
-          message: choice.name,
-          index: choice.index + 1,
-          initial: specialIndexes ? specialIndexes[0].index : 0,
-          scaleIndex: specialIndexes ? specialIndexes[0].index : 0
-        })
       }
 
+      choicesToModify.splice(choice.index + 1, 0, newChoiceWithIgnoreSelected)
+
+      if (this.filterText !== '') {
+        this.allChoices.splice(
+          this.allChoices.findIndex((ch) => ch === choice) + 1,
+          0,
+          newChoiceWithIgnoreSelected
+        )
+      }
+
+      // fix index order of the re-arranged choices
       choicesToModify.slice(choice.index + 2).forEach((ch) => ch.index++)
     }
   }
@@ -722,7 +726,7 @@ class RushSelect extends ArrayPrompt {
   submit() {
     this.value = []
 
-    for (let choice of this.choices) {
+    for (let choice of this.allChoices) {
       const script = choice.availableScripts[this.getChoiceSelectedScriptIndex(choice)]
 
       if (script !== this.options.ignoreText) {

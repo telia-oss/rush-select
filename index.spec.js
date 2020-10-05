@@ -12,8 +12,12 @@ const setup = async () => {
     debug: console.debug
   }
 
+  let mockLastSavedResult
+  let mockLastLoadedResult
+
   jest.mock('./save-load.js', () => ({
     save: jest.fn((directory, data) => {
+      // eslint-disable-next-line
       mockLastSavedResult = data
     }),
     load: jest.fn(() => {
@@ -161,6 +165,61 @@ describe('index.js', () => {
       {
         packageName: 'random-package',
         script: 'build:prod',
+        scriptExecutable: undefined,
+        scriptCommand: undefined
+      }
+    ])
+  })
+
+  test('entries should not randomly disappear despite doing filtering', async () => {
+    const { promptInstance, submitAndRun } = await setup()
+
+    promptInstance.onKeyPress('r', {})
+    promptInstance.onKeyPress('a', {})
+    promptInstance.onKeyPress('n', {})
+    promptInstance.onKeyPress('d', {})
+
+    await promptInstance.down()
+    await promptInstance.right()
+    await promptInstance.down()
+    await promptInstance.right()
+
+    expect(promptInstance.choices).toHaveLength(2)
+    expect(promptInstance.choices[0].name).toBe('random-package')
+    expect(promptInstance.choices[0].scaleIndex).toBe(1)
+    expect(promptInstance.choices[1].name).toBe('random-package')
+    expect(promptInstance.choices[1].scaleIndex).toBe(1)
+
+    promptInstance.onKeyPress('', { action: 'delete' })
+
+    expect(promptInstance.choices).toHaveLength(2)
+    expect(promptInstance.choices[0].name).toBe('random-package')
+    expect(promptInstance.choices[0].scaleIndex).toBe(1)
+    expect(promptInstance.choices[1].name).toBe('random-package')
+    expect(promptInstance.choices[1].scaleIndex).toBe(1)
+
+    promptInstance.onKeyPress('', { action: 'delete' })
+    promptInstance.onKeyPress('', { action: 'delete' })
+    promptInstance.onKeyPress('', { action: 'delete' })
+    promptInstance.onKeyPress('', { action: 'delete' })
+
+    const result = await submitAndRun()
+    expect(result).toEqual([
+      {
+        packageName: 'rush build',
+        script: 'smart',
+        scriptExecutable: 'rush',
+        scriptCommand: []
+      },
+      {
+        packageName: 'random-package',
+        script: 'build',
+        scriptExecutable: undefined,
+        scriptCommand: undefined
+      },
+      {
+        packageName: 'random-package',
+        script: 'build',
         scriptExecutable: undefined,
         scriptCommand: undefined
       }
