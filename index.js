@@ -142,6 +142,7 @@ const awaitProcesses = async (processes) => {
   })
   rl.on('SIGINT', () => {
     processes.forEach((p) => p.kill('SIGINT'))
+    processes.forEach((p) => p.kill('SIGINT'))
     return { aborted: true, error: false }
   })
 
@@ -162,6 +163,7 @@ const awaitProcesses = async (processes) => {
   )
 
   rl.close()
+  rl.removeAllListeners()
 
   return { aborted: false, error }
 }
@@ -215,7 +217,7 @@ async function main() {
       )
 
       if (scripts.rushBuild) {
-        if (scripts.rushBuild.script === 'smart') {
+        if (scripts.rushBuild.script === 'smart' && packagesThatWillRunScripts.length > 0) {
           const executable = 'rush'
           const args = ['build'].concat(packagesThatWillRunScripts.map((p) => ['--to', p]).flat())
 
@@ -253,11 +255,13 @@ async function main() {
           rushBuildProcess = spawnStreaming(executable, args, { cwd: rushRootDir }, 'rush rebuild')
         }
 
-        let { aborted, error } = await awaitProcesses([rushBuildProcess])
+        if (rushBuildProcess) {
+          let { aborted, error } = await awaitProcesses([rushBuildProcess])
 
-        anyAborted = anyAborted || aborted
-        // weirdly, rush doesn't seem to exit with non-zero when builds fail..
-        anyError = anyError || error
+          anyAborted = anyAborted || aborted
+          // weirdly, rush doesn't seem to exit with non-zero when builds fail..
+          anyError = anyError || error
+        }
       }
     }
 
