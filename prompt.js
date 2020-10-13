@@ -513,7 +513,7 @@ class RushSelect extends ArrayPrompt {
       hint = this.styles.muted(hint)
     }
 
-    let maxScaleItemsOnScreen = 7
+    let maxScaleItemsOnScreen = 20
 
     let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     let newline = this.newline
@@ -575,14 +575,6 @@ class RushSelect extends ArrayPrompt {
 
   areAllChoicesUncategorized(choices) {
     return choices.every((ch) => ch.category === this.options.uncategorizedText)
-  }
-
-  async renderChoices() {
-    if (this.state.submitted) return ''
-    this.tableize()
-    let choices = this.visible.map(async (ch, i) => await this.renderChoice(ch, i))
-    let visible = await Promise.all(choices)
-    return this.margin[0] + visible.map((v) => v.join(' ')).join('\n')
   }
 
   async renderChoicesAndCategories() {
