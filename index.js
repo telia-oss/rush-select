@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 const path = require('path')
 
-const readline = require('readline')
-
 const { spawnStreaming } = require('@lerna/child-process')
 const colors = require('ansi-colors')
 const RushSelect = require('./prompt')
@@ -136,16 +134,6 @@ const runScripts = (scriptsToRun) => {
 
 // makes user able to CTRL + C during execution
 const awaitProcesses = async (processes) => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-  rl.on('SIGINT', () => {
-    processes.forEach((p) => p.kill('SIGINT'))
-    processes.forEach((p) => p.kill('SIGINT'))
-    return { aborted: true, error: false }
-  })
-
   let error = false
 
   await Promise.all(
@@ -162,10 +150,7 @@ const awaitProcesses = async (processes) => {
     )
   )
 
-  rl.close()
-  rl.removeAllListeners()
-
-  return { aborted: false, error }
+  return { error }
 }
 
 async function main() {
@@ -176,17 +161,7 @@ async function main() {
     const savedProjectScripts = load(rushRootDir)
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
-    let scripts
-    try {
-      scripts = await createRushPrompt(choices, allScriptNames, projects)
-    } catch (e) {
-      if (e === '') {
-        // prompt was aborted by user
-        console.log('Exiting')
-        return
-      }
-      throw e
-    }
+    let scripts = await createRushPrompt(choices, allScriptNames, projects)
 
     if (scripts === null) {
       return
@@ -194,18 +169,16 @@ async function main() {
 
     console.log('Starting pre-scripts')
 
-    let anyAborted
     let anyError
 
     // run through the prescripts sequentially
     for (let preScript of scripts.pre) {
-      let { aborted, error } = await awaitProcesses(runScripts([preScript]))
+      let { error } = await awaitProcesses(runScripts([preScript]))
 
-      anyAborted = anyAborted || aborted
       anyError = anyError || error
     }
 
-    if (!anyAborted && !anyError) {
+    if (!anyError) {
       let rushBuildProcess
 
       // get unique package names that are set to run scripts
@@ -256,16 +229,15 @@ async function main() {
         }
 
         if (rushBuildProcess) {
-          let { aborted, error } = await awaitProcesses([rushBuildProcess])
+          let { error } = await awaitProcesses([rushBuildProcess])
 
-          anyAborted = anyAborted || aborted
           // weirdly, rush doesn't seem to exit with non-zero when builds fail..
           anyError = anyError || error
         }
       }
     }
 
-    if (!anyAborted && !anyError) {
+    if (!anyError) {
       console.log('Starting main scripts')
 
       await awaitProcesses(runScripts(scripts.main))
