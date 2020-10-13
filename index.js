@@ -161,7 +161,12 @@ async function main() {
     const savedProjectScripts = load(rushRootDir)
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
-    let scripts = await createRushPrompt(choices, allScriptNames, projects)
+    let scripts = null
+    try {
+      scripts = await createRushPrompt(choices, allScriptNames, projects)
+    } catch (e) {
+      // that's ok
+    }
 
     if (scripts === null) {
       return
