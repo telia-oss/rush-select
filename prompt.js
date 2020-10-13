@@ -651,7 +651,7 @@ class RushSelect extends ArrayPrompt {
     if (this.filterText !== '') {
       return 'Filtering by: ' + this.filterText + '\n'
     }
-    return '[Type to filter packages]\n'
+    return '[Type to filter -- up/down: change selected project -- left/right: switch scripts to run]\n'
   }
 
   getFilteredChoices(filterText, choices /*, defaultItem*/) {
