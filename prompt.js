@@ -497,6 +497,17 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
+  get limit() {
+    let { state, options, choices } = this
+    let limit = state.limit || this._limit || options.limit || choices.length
+
+    let categories = this.choices.reduce((categories, val) => {
+      categories.add(val.category)
+      return categories
+    }, new Set())
+    return Math.min(limit, this.height) - categories.size
+  }
+
   /**
    * Render a choice, including scale =>
    *   "The website is easy to navigate. ◯───◯───◉───◯───◯"
@@ -581,59 +592,18 @@ class RushSelect extends ArrayPrompt {
     if (this.state.submitted) return ''
     this.tableize()
 
-    let visibles = []
-    let mappedByCategories
-
-    var now = new Date()
-    let specialCategories = now.getMonth() == 3 && now.getDate() == 1
-
-    // ensure the order of which was supplied
-    mappedByCategories = this.visible.reduce((coll = {}, curr) => {
-      coll[curr.category] = coll[curr.category] || []
-      coll[curr.category].push(curr)
-
-      return coll
-    }, {})
-
-    Object.keys(mappedByCategories).forEach((category) => {
-      if (specialCategories) {
-        let animals = [
-          '🐲 Dragon-waking algorithms',
-          '🦖 Tyrannosaurus checks',
-          '🐸 Bug-catching frogs',
-          '🦜 Rubberducking parrots',
-          '🐳 Docker-whales',
-          '🐞 Bug-infestations',
-          '🌵 Things that hurt to type on',
-          '🐇 Pet projects',
-          '🐘 Code that never forgets',
-          '🦊 What does the code say?',
-          '🙈 Definitely AI',
-          '🐶 Does not need the fetch polyfill'
-        ]
-        const randomThing = animals[Math.floor(Math.random() * animals.length)]
-
-        mappedByCategories[category].forEach((choice) => {
-          if (!animals.includes(choice.category)) {
-            choice.category = randomThing
-          }
-        })
-      }
-      visibles = visibles.concat(mappedByCategories[category])
-    })
-
     // fix the indexing
-    visibles.forEach((ch, index) => (ch.index = index))
+    this.visible.forEach((ch, index) => (ch.index = index))
 
-    const categorizedChoicesExist = visibles.some((ch) => this.isChoiceCategorized(ch))
+    const categorizedChoicesExist = this.visible.some((ch) => this.isChoiceCategorized(ch))
 
     let choicesAndCategories = []
-    for (let i = 0; i < visibles.length; i++) {
-      let ch = visibles[i]
+    for (let i = 0; i < this.visible.length; i++) {
+      let ch = this.visible[i]
       let renderedChoice = await this.renderChoice(ch, i, true)
 
       if (categorizedChoicesExist || this.filterText !== '') {
-        let prevChoiceCategory = i === 0 ? null : visibles[i - 1].category
+        let prevChoiceCategory = i === 0 ? null : this.visible[i - 1].category
 
         if (prevChoiceCategory !== ch.category) {
           choicesAndCategories.push(this.styles.underline(ch.category))
