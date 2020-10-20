@@ -410,23 +410,16 @@ class RushSelect extends ArrayPrompt {
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
-    // if (
-    //   !this.isScriptAvailable(scaleItemName, choice) &&
-    //   (choice.category === 'category? TODO' ||
-    //     (choice.scriptNames && choice.scriptNames.includes(scaleItemName)))
-    // ) {
-    //   return ''
-    // } else  ...
     if (!this.isScriptAvailable(scaleItem, choice)) {
       return ''
     } else if (choiceIsFocused && scaleItemIsSelected) {
-      return this.styles.strong(this.styles.danger(scaleItem.name))
+      return this.styles.strong(this.styles.danger(' [' + scaleItem.name + '] '))
     } else if (scaleItemIsSelected) {
-      return this.styles.strong(this.styles.success(scaleItem.name))
+      return this.styles.strong(this.styles.success(' [' + scaleItem.name + '] '))
     } else if (choiceIsFocused) {
-      return this.styles.danger(scaleItem.name)
+      return this.styles.danger('  ' + scaleItem.name + '  ')
     }
-    return this.styles.strong(scaleItem.name)
+    return this.styles.default('  ' + scaleItem.name + '  ')
   }
 
   getChoiceSelectedScriptIndex(choice) {
@@ -473,7 +466,7 @@ class RushSelect extends ArrayPrompt {
 
     scaleItems = scaleItems.filter((scaleItem) => scaleItem)
 
-    let padding = this.term === 'Hyper' ? '' : ' '
+    let padding = this.term === 'Hyper' ? '' : ''
     return (
       (scrollsFromLeftEdge > 0
         ? '[' +
