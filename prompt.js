@@ -505,7 +505,7 @@ class RushSelect extends ArrayPrompt {
       categories.add(val.category)
       return categories
     }, new Set())
-    return Math.min(limit, this.height) - categories.size
+    return Math.min(limit, this.height - categories.size)
   }
 
   /**
