@@ -406,7 +406,6 @@ class RushSelect extends ArrayPrompt {
 
   scaleIndicator(choice, item, choiceIndex) {
     const scaleItem = this.scale[item.index]
-
     let scaleItemIsSelected = choice.scaleIndex === item.index
     let choiceIsFocused = this.index === choiceIndex
 
@@ -585,7 +584,7 @@ class RushSelect extends ArrayPrompt {
     if (this.state.submitted) return ''
     this.tableize()
 
-    // fix the indexing
+    // fix the indexing?
     this.visible.forEach((ch, index) => (ch.index = index))
 
     const categorizedChoicesExist = this.visible.some((ch) => this.isChoiceCategorized(ch))
@@ -618,20 +617,22 @@ class RushSelect extends ArrayPrompt {
   }
 
   getFilteredChoices(filterText, choices /*, defaultItem*/) {
-    return fuzzy
-      .filter(filterText || '', choices, {
-        // fuzzy options
-        // pre: ansiStyles.green.open,
-        // post: ansiStyles.green.close,
-        extract: (choice) => choice.ansiLessName || stripAnsi(choice.name)
-      })
-      .map((e) => {
-        e.original.ansiLessName = stripAnsi(e.string)
-        e.original.name = e.string
-        e.original.message = e.string
+    return this.getSortedChoices(
+      fuzzy
+        .filter(filterText || '', choices, {
+          // fuzzy options
+          // pre: ansiStyles.green.open,
+          // post: ansiStyles.green.close,
+          extract: (choice) => choice.ansiLessName || stripAnsi(choice.name)
+        })
+        .map((e) => {
+          e.original.ansiLessName = stripAnsi(e.string)
+          e.original.name = e.string
+          e.original.message = e.string
 
-        return e.original
-      })
+          return e.original
+        })
+    )
   }
 
   async render() {
