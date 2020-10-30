@@ -1,4 +1,4 @@
-import colors from 'ansi-colors';
+import colors from 'ansi-colors'
 const stripAnsi = require('strip-ansi')
 // const ansiStyles = require('ansi-styles')
 const ArrayPrompt = require('enquirer/lib/types/array')
@@ -154,7 +154,7 @@ class RushSelect extends ArrayPrompt {
         customSortOrder(b.customSortText || b.category)
         ? -1
         : 1
-    });
+    })
   }
 
   onKeyPress(ch: any, key: any) {
@@ -219,7 +219,8 @@ class RushSelect extends ArrayPrompt {
     }
     this.widths[0] = Math.min(this.widths[0], longest + 3)
 
-    this.choices.forEach((choice: any) => this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
+    this.choices.forEach((choice: any) =>
+      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
     )
   }
 
@@ -238,11 +239,12 @@ class RushSelect extends ArrayPrompt {
     const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
     return this.choices.filter(
-      (ch: any) => ch.name === choice.name &&
-      (ch.scaleIndex !== undefined
-        ? ch.scaleIndex === ignoreIndex
-        : ch.initial === ignoreIndex || isNaN(ch.initial))
-    ).length;
+      (ch: any) =>
+        ch.name === choice.name &&
+        (ch.scaleIndex !== undefined
+          ? ch.scaleIndex === ignoreIndex
+          : ch.initial === ignoreIndex || isNaN(ch.initial))
+    ).length
   }
 
   checkIfPackageScriptInstanceShouldBeAdded(choice: any, choicesToModify: any) {
@@ -430,20 +432,20 @@ class RushSelect extends ArrayPrompt {
   getChoiceSelectedScriptIndex(choice: any) {
     return this.getChoiceAvailableScriptIndexes(choice).findIndex(
       (item: any) => item.index === choice.scaleIndex
-    );
+    )
   }
 
   getChoiceAvailableScriptIndexes(choice: any) {
-    return choice.scale.filter((s: any) => this.isScriptAvailable(this.scale[s.index], choice));
+    return choice.scale.filter((s: any) => this.isScriptAvailable(this.scale[s.index], choice))
   }
 
   /**
    * Render the actual scale => ◯────◯────◉────◯────◯
    */
-  renderScale(choice: any, i: any, maxScaleItemsOnScreen: any) {
+  renderScale(choice: any, i: number, maxScaleItemsOnScreen: number) {
     let scaleItems = choice.scale
       .map((item: any) => this.scaleIndicator(choice, item, i))
-      .filter((i: any) => i !== '')
+      .filter((i: string) => i !== '')
 
     const choiceScaleIndex = this.getChoiceSelectedScriptIndex(choice)
     let scrollsFromLeftEdge = null
@@ -513,7 +515,7 @@ class RushSelect extends ArrayPrompt {
    *   "The website is easy to navigate. ◯───◯───◉───◯───◯"
    */
 
-  async renderChoice(choice: any, i: any, bulletIndentation = false) {
+  async renderChoice(choice: any, i: number, bulletIndentation = false) {
     await this.onChoice(choice, i)
 
     const focused = this.index === i
@@ -529,8 +531,7 @@ class RushSelect extends ArrayPrompt {
 
     const pad = (str: any) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     const newline = this.newline
-    // @ts-expect-error ts-migrate(2554) FIXME: Expected 0 arguments, but got 1.
-    const ind = this.indent(choice)
+    const ind = this.indent()
     const message = await this.resolve(choice.message, this.state, choice, i)
     let scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
     const margin = this.margin[1] + this.margin[3]
@@ -542,21 +543,38 @@ class RushSelect extends ArrayPrompt {
     const msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line: any) => pad(line) + this.margin[1])
 
-    let selectedBulletCharacter = '-'
-    let bulletCharacter = '-'
+    let selectedBulletCharacter = '─'
+    let bulletCharacter = ' '
 
-    var now = new Date()
+    const now = new Date()
     if (now.getMonth() == 10 && now.getDate() == 31) {
       selectedBulletCharacter = '😱'
       bulletCharacter = '👻'
     }
 
+    const hasSiblingAbove = this.choices[i - 1] && this.choices[i - 1].name === choice.name
+    const hasSiblingBelow = this.choices[i + 1] && this.choices[i + 1].name === choice.name
+    const hasSiblingsInBothDirections = hasSiblingAbove && hasSiblingBelow
+
+    let suffixSymbol = ' '
+    if (hasSiblingsInBothDirections) {
+      suffixSymbol = '│'
+    } else if (hasSiblingAbove) {
+      suffixSymbol = '└'
+    } else if (hasSiblingBelow) {
+      suffixSymbol = '┌'
+    }
+
     if (focused) {
-      lines = lines.map((line: any) => this.styles.hasAnsi(line) ? line : this.styles.danger(line))
-      lines[0] = bulletIndentation ? selectedBulletCharacter + ' > ' + lines[0] : '> '
+      lines = lines.map((line: any) =>
+        this.styles.hasAnsi(line) ? line : this.styles.danger(line)
+      )
+      lines[0] = bulletIndentation ? selectedBulletCharacter + '─> ' + lines[0] : '> '
     } else {
       lines[0] = bulletIndentation ? bulletCharacter + '   ' + lines[0] : lines[0]
     }
+
+    lines[0] += suffixSymbol
 
     if (this.linebreak) lines.push('')
 
@@ -587,7 +605,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   areAllChoicesUncategorized(choices: any) {
-    return choices.every((ch: any) => ch.category === this.options.uncategorizedText);
+    return choices.every((ch: any) => ch.category === this.options.uncategorizedText)
   }
 
   async renderChoicesAndCategories() {
@@ -642,7 +660,7 @@ class RushSelect extends ArrayPrompt {
 
           return e.original
         })
-    );
+    )
   }
 
   async render() {
