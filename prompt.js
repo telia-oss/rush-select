@@ -21,7 +21,7 @@ class RushSelect extends ArrayPrompt {
     this.linebreak = options.linebreak || false
     this.edgeLength = options.edgeLength || 3
     this.newline = options.newline || '\n   '
-    let start = options.startNumber || 1
+    const start = options.startNumber || 1
     if (typeof this.scale === 'number') {
       this.scaleKey = false
       this.scale = Array(this.scale)
@@ -75,18 +75,15 @@ class RushSelect extends ArrayPrompt {
 
     this.choices = this.getSortedChoices(this.choices)
 
-    // for the filtering, we store all choices here
-    this.allChoices = this.choices
-
     // for padding
-    this.longestPackageNameLength = this.allChoices.reduce((val, curr) => {
+    this.longestPackageNameLength = this.choices.reduce((val, curr) => {
       const result = curr.name.length + 4
 
       return result > val ? result : val
     }, 0)
 
     // for padding
-    this.shortestPackageNameLength = this.allChoices.reduce((val, curr) => {
+    this.shortestPackageNameLength = this.choices.reduce((val, curr) => {
       const result = curr.name.length
 
       return result < val ? result : val
@@ -94,8 +91,8 @@ class RushSelect extends ArrayPrompt {
 
     // for padding, although not really used atm
     this.longestScaleItemNameLength = Math.min(
-      this.allChoices.reduce((longest, currentChoice) => {
-        let longestInsideChoice = currentChoice.availableScripts.reduce(
+      this.choices.reduce((longest, currentChoice) => {
+        const longestInsideChoice = currentChoice.availableScripts.reduce(
           (longestInsideChoiceSoFar, currentScaleItem) => {
             return currentScaleItem.length > longestInsideChoiceSoFar
               ? currentScaleItem.length
@@ -166,16 +163,10 @@ class RushSelect extends ArrayPrompt {
     }
 
     if (this.filterText !== '') {
-      if (noFilterPreviouslyApplied) {
-        // ensure we have all the extra lines by extra script instances stored
-        // before we start filtering the choices
-        this.allChoices = this.choices
-      }
-
-      this.choices = this.getFilteredChoices(this.filterText, this.allChoices)
+      this.visible = this.getFilteredChoices(this.filterText, this.choices)
     } else if (this.filterText === '' && !noFilterPreviouslyApplied) {
       // back to no filtering, restore the view
-      this.choices = this.allChoices
+      this.state.visible = undefined
     }
 
     this.index = 0
@@ -194,7 +185,7 @@ class RushSelect extends ArrayPrompt {
     this.tableized = true
     let longest = 0
 
-    for (let ch of this.choices) {
+    for (const ch of this.choices) {
       longest = Math.max(longest, ch.message.length)
 
       ch.initial = ch.initial || 0
@@ -229,7 +220,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   ignoresLeftFromChoiceScripts(choice) {
-    let ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
+    const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
     return this.choices.filter(
       (ch) =>
@@ -250,7 +241,7 @@ class RushSelect extends ArrayPrompt {
       specialIndexes = this.getChoiceAvailableScriptIndexes(choice)
     }
 
-    let anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice) > 0
+    const anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice) > 0
 
     const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
@@ -260,7 +251,7 @@ class RushSelect extends ArrayPrompt {
       !anyIgnoresLeft &&
       choiceCountDerivedFromCurrentPackage < choice.availableScripts.length - 1
     ) {
-      let newChoiceWithIgnoreSelected = {
+      const newChoiceWithIgnoreSelected = {
         ...choice,
         message: choice.name,
         index: choice.index + 1,
@@ -269,14 +260,6 @@ class RushSelect extends ArrayPrompt {
       }
 
       choicesToModify.splice(choice.index + 1, 0, newChoiceWithIgnoreSelected)
-
-      if (this.filterText !== '') {
-        this.allChoices.splice(
-          this.allChoices.findIndex((ch) => ch === choice) + 1,
-          0,
-          newChoiceWithIgnoreSelected
-        )
-      }
 
       // fix index order of the re-arranged choices
       choicesToModify.slice(choice.index + 2).forEach((ch) => ch.index++)
@@ -309,7 +292,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   right() {
-    let choice = this.focused
+    const choice = this.focused
 
     if (choice.scaleIndex >= this.scale.length - 1) return this.alert()
 
@@ -330,17 +313,17 @@ class RushSelect extends ArrayPrompt {
       return
     }
 
-    let ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
-    let wasActive = choice.scaleIndex === ignoreIndex
+    const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
+    const wasActive = choice.scaleIndex === ignoreIndex
 
     const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
       (ch) => ch.name === choice.name
     ).length
 
-    let ignoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify)
+    const ignoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify)
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
-      let isLastOccurrence =
+      const isLastOccurrence =
         choicesToModify.filter((ch) => ch.name === choice.name).pop().index === choice.index
 
       choicesToModify.splice(choice.index, 1)
@@ -355,7 +338,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   left() {
-    let choice = this.focused
+    const choice = this.focused
     if (choice.scaleIndex <= 0) return this.alert()
 
     try {
@@ -378,7 +361,7 @@ class RushSelect extends ArrayPrompt {
 
   format() {
     if (this.state.submitted) {
-      let values = this.choices.map((ch) => this.styles.info(ch.index))
+      const values = this.choices.map((ch) => this.styles.info(ch.index))
       return values.join(', ')
     }
     return ''
@@ -396,8 +379,8 @@ class RushSelect extends ArrayPrompt {
   renderScaleKey() {
     if (this.scaleKey === false) return ''
     if (this.state.submitted) return ''
-    let scale = this.scale.map((item) => `   ${item.name} - ${item.message}`)
-    let key = ['', ...scale].map((item) => this.styles.muted(item))
+    const scale = this.scale.map((item) => `   ${item.name} - ${item.message}`)
+    const key = ['', ...scale].map((item) => this.styles.muted(item))
     return key.join('\n')
   }
 
@@ -414,8 +397,8 @@ class RushSelect extends ArrayPrompt {
 
   scaleIndicator(choice, item, choiceIndex) {
     const scaleItem = this.scale[item.index]
-    let scaleItemIsSelected = choice.scaleIndex === item.index
-    let choiceIsFocused = this.index === choiceIndex
+    const scaleItemIsSelected = choice.scaleIndex === item.index
+    const choiceIsFocused = this.index === choiceIndex
 
     if (!this.isScriptAvailable(scaleItem, choice)) {
       return ''
@@ -473,7 +456,7 @@ class RushSelect extends ArrayPrompt {
 
     scaleItems = scaleItems.filter((scaleItem) => scaleItem)
 
-    let padding = this.term === 'Hyper' ? '' : ''
+    const padding = this.term === 'Hyper' ? '' : ''
     return (
       (scrollsFromLeftEdge > 0
         ? '[' +
@@ -498,10 +481,10 @@ class RushSelect extends ArrayPrompt {
   }
 
   get limit() {
-    let { state, options, choices } = this
-    let limit = state.limit || this._limit || options.limit || choices.length
+    const { state, options, choices } = this
+    const limit = state.limit || this._limit || options.limit || choices.length
 
-    let categories = this.choices.reduce((categories, val) => {
+    const categories = this.choices.reduce((categories, val) => {
       categories.add(val.category)
       return categories
     }, new Set())
@@ -516,8 +499,8 @@ class RushSelect extends ArrayPrompt {
   async renderChoice(choice, i, bulletIndentation = false) {
     await this.onChoice(choice, i)
 
-    let focused = this.index === i
-    let pointer = await this.pointer(choice, i)
+    const focused = this.index === i
+    const pointer = await this.pointer(choice, i)
     let hint = await choice.hint
 
     if (hint && !utils.hasColor(hint)) {
@@ -526,18 +509,18 @@ class RushSelect extends ArrayPrompt {
 
     let maxScaleItemsOnScreen = 20
 
-    let pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
-    let newline = this.newline
-    let ind = this.indent(choice)
-    let message = await this.resolve(choice.message, this.state, choice, i)
+    const pad = (str) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
+    const newline = this.newline
+    const ind = this.indent(choice)
+    const message = await this.resolve(choice.message, this.state, choice, i)
     let scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
-    let margin = this.margin[1] + this.margin[3]
+    const margin = this.margin[1] + this.margin[3]
     this.scaleLength = colors.unstyle(scale).length
     this.widths[0] = Math.min(
       this.widths[0],
       this.longestPackageNameLength + margin - this.shortestPackageNameLength
     )
-    let msg = utils.wordWrap(message, { width: this.widths[0], newline })
+    const msg = utils.wordWrap(message, { width: this.widths[0], newline })
     let lines = msg.split('\n').map((line) => pad(line) + this.margin[1])
 
     let selectedBulletCharacter = '-'
@@ -561,12 +544,12 @@ class RushSelect extends ArrayPrompt {
     let renderedChoice
     let columnSpaceRemaining
 
-    let termColumns = process.stdout.columns
+    const termColumns = process.stdout.columns
 
     do {
       scale = await this.renderScale(choice, i, maxScaleItemsOnScreen)
 
-      let terminalFittedLines = [...lines]
+      const terminalFittedLines = [...lines]
       terminalFittedLines[0] += this.focused ? this.styles.info(scale) : scale
 
       renderedChoice = [ind + pointer, terminalFittedLines.join('\n')].filter(Boolean)
@@ -597,13 +580,13 @@ class RushSelect extends ArrayPrompt {
 
     const categorizedChoicesExist = this.visible.some((ch) => this.isChoiceCategorized(ch))
 
-    let choicesAndCategories = []
+    const choicesAndCategories = []
     for (let i = 0; i < this.visible.length; i++) {
-      let ch = this.visible[i]
-      let renderedChoice = await this.renderChoice(ch, i, true)
+      const ch = this.visible[i]
+      const renderedChoice = await this.renderChoice(ch, i, true)
 
       if (categorizedChoicesExist || this.filterText !== '') {
-        let prevChoiceCategory = i === 0 ? null : this.visible[i - 1].category
+        const prevChoiceCategory = i === 0 ? null : this.visible[i - 1].category
 
         if (prevChoiceCategory !== ch.category) {
           choicesAndCategories.push(this.styles.underline(ch.category))
@@ -613,7 +596,7 @@ class RushSelect extends ArrayPrompt {
       choicesAndCategories.push(renderedChoice)
     }
 
-    let visible = (await Promise.all(choicesAndCategories)).flat()
+    const visible = (await Promise.all(choicesAndCategories)).flat()
     return this.margin[0] + visible.join('\n')
   }
 
@@ -644,11 +627,11 @@ class RushSelect extends ArrayPrompt {
   }
 
   async render() {
-    let { submitted, size } = this.state
+    const { submitted, size } = this.state
 
-    let prefix = await this.prefix()
-    let separator = await this.separator()
-    let message = await this.message()
+    const prefix = await this.prefix()
+    const separator = await this.separator()
+    const message = await this.message()
 
     let prompt = ''
     if (this.options.promptLine !== false) {
@@ -662,13 +645,13 @@ class RushSelect extends ArrayPrompt {
       }
     })
 
-    let header = await this.header()
-    let output = await this.format()
+    const header = await this.header()
+    const output = await this.format()
     // let key = await this.renderScaleKey()
-    let help = (await this.error()) || (await this.hint())
-    let body = await this.renderChoicesAndCategories()
-    let footer = await this.footer()
-    let err = this.emptyError
+    const help = (await this.error()) || (await this.hint())
+    const body = await this.renderChoicesAndCategories()
+    const footer = await this.footer()
+    const err = this.emptyError
 
     if (output) prompt += output
     if (help && !prompt.includes(help)) prompt += ' ' + help
@@ -677,7 +660,7 @@ class RushSelect extends ArrayPrompt {
       prompt += this.styles.danger(err)
     }
 
-    let filterHeading = await this.getFilterHeading()
+    const filterHeading = await this.getFilterHeading()
 
     this.clear(size)
     this.write([header, prompt /*, key*/, filterHeading, body, footer].filter(Boolean).join('\n'))
@@ -690,7 +673,7 @@ class RushSelect extends ArrayPrompt {
   submit() {
     this.value = []
 
-    for (let choice of this.allChoices) {
+    for (const choice of this.choices) {
       const script = choice.availableScripts[this.getChoiceSelectedScriptIndex(choice)]
 
       if (script !== this.options.ignoreText) {
