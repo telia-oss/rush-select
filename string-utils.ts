@@ -1,8 +1,8 @@
 // Utility functions for string operations
 module.exports = {
-  replaceWithCharacter: (text, character = ' ') => text.padReplace(/./g, character),
+  replaceWithCharacter: (text: any, character = ' ') => text.padReplace(/./g, character),
 
-  padAround: (text, padLength) => {
+  padAround: (text: any, padLength: any) => {
     let result = ''
 
     result += ''.padStart(Math.floor(padLength / 2 - text.length), ' ')
@@ -11,7 +11,7 @@ module.exports = {
     return result
   },
 
-  padReplace: (text, replaceText = '') => {
+  padReplace: (text: any, replaceText = '') => {
     let result = ''
 
     result += ''.padStart(Math.floor(text.length / 2 - replaceText.length / 2), ' ')

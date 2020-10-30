@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'path'.
 const path = require('path')
 
 const { spawnStreaming } = require('@lerna/child-process')
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'colors'.
 const colors = require('ansi-colors')
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'RushSelect... Remove this comment to see the full error message
 const RushSelect = require('./prompt')
 const { createChoices, setInitialValuesOnChoices } = require('./choice-generation.js')
 const { save, load } = require('./save-load.js')
@@ -25,16 +28,17 @@ if (argv.exclude === undefined) {
   argv.exclude = [argv.exclude]
 }
 
-const isScriptNameAllowed = (scriptName) =>
-  (argv.include === null || argv.include.includes(scriptName)) &&
-  (argv.exclude === null || !argv.exclude.includes(scriptName))
+const isScriptNameAllowed = (scriptName: any) => (argv.include === null || argv.include.includes(scriptName)) &&
+(argv.exclude === null || !argv.exclude.includes(scriptName))
 
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'rushRootDi... Remove this comment to see the full error message
 const rushRootDir = getRushRootDir()
 
-const createRushPrompt = async (choices, allScriptNames, projects) => {
+const createRushPrompt = async (choices: any, allScriptNames: any, projects: any) => {
   const rushSelect = new RushSelect({
     name: 'rush-select',
     message:
+      // @ts-expect-error ts-migrate(2339) FIXME: Property 'extraWarn' does not exist on type 'Globa... Remove this comment to see the full error message
       (global.extraWarn ? global.extraWarn + '\n\n' : '') +
       'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
     messageWidth: 150,
@@ -64,7 +68,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     ],
     edgeLength: 2,
     // the description above the items
-    scale: allScriptNames.sort().map((name) => ({
+    scale: allScriptNames.sort().map((name: any) => ({
       name
     }))
   })
@@ -82,13 +86,16 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
   }
 
   scriptsToRun
-    .filter(({ script }) => script !== undefined)
-    .forEach((item) => {
+    .filter(({
+    script
+  }: any) => script !== undefined)
+    .forEach((item: any) => {
       if (item === null) {
         return
       }
 
       if (item.packageName === 'rush') {
+        // @ts-expect-error ts-migrate(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
         scripts.pre.push(item)
         return
       }
@@ -99,10 +106,11 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
       }
 
       // add project reference
-      const project = projects.find((p) => p.packageName === item.packageName)
+      const project = projects.find((p: any) => p.packageName === item.packageName)
       if (project) {
         scripts.main.push({
           ...item,
+          // @ts-expect-error ts-migrate(2322) FIXME: Type 'any' is not assignable to type 'never'.
           project
         })
       }
@@ -113,40 +121,45 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
   return scripts
 }
 
-const runScripts = (scriptsToRun) => {
-  const getPrefix = (packageName, script) => packageName + ' > ' + script + ' '
-  const longestSequence = scriptsToRun.reduce((val, curr) => {
+const runScripts = (scriptsToRun: any) => {
+  const getPrefix = (packageName: any, script: any) => packageName + ' > ' + script + ' '
+  const longestSequence = scriptsToRun.reduce((val: any, curr: any) => {
     const result = getPrefix(curr.packageName, curr.script).length
 
     return result > val ? result : val
   }, 0)
 
   return scriptsToRun.map(
-    ({ packageName, script, project, scriptExecutable = 'npm', scriptCommand = ['run'] }) =>
+    ({
+      packageName,
+      script,
+      project,
+      scriptExecutable = 'npm',
+      scriptCommand = ['run']
+    }: any) =>
       spawnStreaming(
         scriptExecutable,
         scriptCommand.concat(script),
         { cwd: project ? path.resolve(rushRootDir, project.projectFolder) : rushRootDir },
         getPrefix(packageName, script).padEnd(longestSequence, ' ')
       )
-  )
+  );
 }
 
 // makes user able to CTRL + C during execution
-const awaitProcesses = async (processes) => {
+const awaitProcesses = async (processes: any) => {
   let error = false
 
   await Promise.all(
     processes.map(
-      (p) =>
-        new Promise((resolve) => {
-          p.once('exit', (exitCode) => {
-            if (exitCode !== 0) {
-              error = true
-            }
-            resolve(exitCode)
-          })
+      (p: any) => new Promise((resolve) => {
+        p.once('exit', (exitCode: any) => {
+          if (exitCode !== 0) {
+            error = true
+          }
+          resolve(exitCode)
         })
+      })
     )
   )
 
@@ -189,14 +202,17 @@ async function main() {
       // get unique package names that are set to run scripts
       const packagesThatWillRunScripts = Array.from(
         scripts.main.reduce((set, item) => {
+          // @ts-expect-error ts-migrate(2339) FIXME: Property 'packageName' does not exist on type 'nev... Remove this comment to see the full error message
           set.add(item.packageName)
           return set
         }, new Set())
       )
 
       if (scripts.rushBuild) {
+        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         if (scripts.rushBuild.script === 'smart' && packagesThatWillRunScripts.length > 0) {
           const executable = 'rush'
+          // @ts-expect-error ts-migrate(2339) FIXME: Property 'flat' does not exist on type 'unknown[][... Remove this comment to see the full error message
           const args = ['build'].concat(packagesThatWillRunScripts.map((p) => ['--to', p]).flat())
 
           console.log('Starting smart rush build step: ' + executable + ' ' + args.join(' '))
@@ -207,6 +223,7 @@ async function main() {
             { cwd: rushRootDir },
             'smart rush build'
           )
+        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'regular') {
           const executable = 'rush'
           const args = ['build']
@@ -219,6 +236,7 @@ async function main() {
             { cwd: rushRootDir },
             'incremental rush build'
           )
+        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'rebuild') {
           const executable = 'rush'
           const args = ['rebuild']

@@ -1,5 +1,7 @@
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'path'.
 const path = require('path')
 const hjson = require('hjson')
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'fs'.
 const fs = require('fs')
 const findUp = require('find-up')
 
@@ -11,6 +13,7 @@ if (rushJsonRelativePath === null) {
   )
 }
 
+// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'rushRootDi... Remove this comment to see the full error message
 const rushRootDir = path.dirname(rushJsonRelativePath)
 const rushJsonPath = path.resolve(rushJsonRelativePath)
 
@@ -20,7 +23,7 @@ const { projects } = rushConfig
 module.exports = {
   getProjectsAndRespectivePackageJson: () =>
     projects
-      .map((project) => {
+      .map((project: any) => {
         project.packageJson = require(path.resolve(
           rushRootDir,
           project.projectFolder,
@@ -29,7 +32,7 @@ module.exports = {
 
         return project
       })
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         if (a.reviewCategory < b.reviewCategory) {
           return -1
         }
