@@ -32,7 +32,7 @@ const isScriptNameAllowed = (scriptName) =>
 const rushRootDir = getRushRootDir()
 
 const createRushPrompt = async (choices, allScriptNames, projects) => {
-  let rushSelect = new RushSelect({
+  const rushSelect = new RushSelect({
     name: 'rush-select',
     message:
       (global.extraWarn ? global.extraWarn + '\n\n' : '') +
@@ -69,7 +69,7 @@ const createRushPrompt = async (choices, allScriptNames, projects) => {
     }))
   })
 
-  let scriptsToRun = await rushSelect.run()
+  const scriptsToRun = await rushSelect.run()
 
   if (scriptsToRun.length === 0) {
     return null
@@ -177,8 +177,8 @@ async function main() {
     let anyError
 
     // run through the prescripts sequentially
-    for (let preScript of scripts.pre) {
-      let { error } = await awaitProcesses(runScripts([preScript]))
+    for (const preScript of scripts.pre) {
+      const { error } = await awaitProcesses(runScripts([preScript]))
 
       anyError = anyError || error
     }
@@ -187,7 +187,7 @@ async function main() {
       let rushBuildProcess
 
       // get unique package names that are set to run scripts
-      let packagesThatWillRunScripts = Array.from(
+      const packagesThatWillRunScripts = Array.from(
         scripts.main.reduce((set, item) => {
           set.add(item.packageName)
           return set
@@ -234,7 +234,7 @@ async function main() {
         }
 
         if (rushBuildProcess) {
-          let { error } = await awaitProcesses([rushBuildProcess])
+          const { error } = await awaitProcesses([rushBuildProcess])
 
           // weirdly, rush doesn't seem to exit with non-zero when builds fail..
           anyError = anyError || error

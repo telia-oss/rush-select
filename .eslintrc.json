@@ -10,5 +10,7 @@
   "parserOptions": {
     "ecmaVersion": 11
   },
-  "rules": {}
+  "rules": {
+    "prefer-const": "error"
+  }
 }

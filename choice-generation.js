@@ -1,8 +1,8 @@
 module.exports = {
   createChoices: (projects, scriptFilterFn = () => true) => {
-    let tempSet = new Set([])
+    const tempSet = new Set([])
 
-    let choices = projects
+    const choices = projects
       // some projects may not have a single script that is allowed to run, so filter them out
       .filter((project) =>
         Object.keys(project.packageJson.scripts).some((scriptName) => scriptFilterFn(scriptName))
@@ -13,7 +13,7 @@ module.exports = {
           Object.keys(project.packageJson.scripts).forEach((s) => tempSet.add(s))
         }
 
-        let availableScripts = Object.keys(project.packageJson.scripts || [])
+        const availableScripts = Object.keys(project.packageJson.scripts || [])
           .sort()
           .filter(scriptFilterFn)
 
@@ -33,14 +33,14 @@ module.exports = {
   },
   setInitialValuesOnChoices: (choices, savedProjectScripts, scriptFilterFn = () => true) => {
     // set the initial values, if possible
-    let usedChoices = []
+    const usedChoices = []
     savedProjectScripts.forEach((savedProjectScript) => {
       let foundChoiceIndex = choices.findIndex(
         (unusedChoice) => unusedChoice.name === savedProjectScript.packageName
       )
 
       if (foundChoiceIndex !== -1) {
-        let choiceInUse = usedChoices.some(
+        const choiceInUse = usedChoices.some(
           (usedChoice) => usedChoice.initial === choices[foundChoiceIndex].initial
         )
 

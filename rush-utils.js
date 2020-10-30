@@ -3,7 +3,7 @@ const hjson = require('hjson')
 const fs = require('fs')
 const findUp = require('find-up')
 
-let rushJsonRelativePath = findUp.sync('rush.json')
+const rushJsonRelativePath = findUp.sync('rush.json')
 
 if (rushJsonRelativePath === null) {
   throw new Error(
@@ -11,11 +11,11 @@ if (rushJsonRelativePath === null) {
   )
 }
 
-let rushRootDir = path.dirname(rushJsonRelativePath)
-let rushJsonPath = path.resolve(rushJsonRelativePath)
+const rushRootDir = path.dirname(rushJsonRelativePath)
+const rushJsonPath = path.resolve(rushJsonRelativePath)
 
-let rushConfig = hjson.parse(fs.readFileSync(rushJsonPath).toString())
-let { projects } = rushConfig
+const rushConfig = hjson.parse(fs.readFileSync(rushJsonPath).toString())
+const { projects } = rushConfig
 
 module.exports = {
   getProjectsAndRespectivePackageJson: () =>

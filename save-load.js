@@ -19,9 +19,9 @@ module.exports = {
     }
 
     // json-ify
-    let projectsToRunByNameJsonFriendly = []
+    const projectsToRunByNameJsonFriendly = []
     projectsToRun.forEach((project) => {
-      let jsonFriendly = { ...project }
+      const jsonFriendly = { ...project }
       delete jsonFriendly.project
 
       projectsToRunByNameJsonFriendly.push(jsonFriendly)

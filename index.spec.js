@@ -77,7 +77,7 @@ const setup = async () => {
   let mockPromptInstance
   let mockRunPromise
   let mockReadyResolve
-  let promptReadyPromise = new Promise((resolve) => {
+  const promptReadyPromise = new Promise((resolve) => {
     mockReadyResolve = resolve
   })
 
