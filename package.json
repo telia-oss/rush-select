@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/TeliaSweden/rush-select#readme",
   "bin": {
-    "rush-select": "index.js"
+    "rush-select": "dist/index.js"
   },
   "main": "dist/index.js",
   "scripts": {
