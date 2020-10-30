@@ -139,19 +139,36 @@ const runScripts = (scriptsToRun: any) => {
 const awaitProcesses = async (processes: any) => {
   let error = false
 
-  await Promise.all(
-    processes.map(
-      (p: any) =>
-        new Promise((resolve) => {
-          p.once('exit', (exitCode: any) => {
-            if (exitCode !== 0) {
-              error = true
-            }
-            resolve(exitCode)
-          })
-        })
-    )
-  )
+  for (const process of processes) {
+    await new Promise((resolve) => {
+      let resolved = false
+      process.once('exit', (exitCode: number) => {
+        if (exitCode !== 0) {
+          error = true
+        }
+        if (!resolved) {
+          resolved = true
+          resolve(exitCode)
+        }
+      })
+
+      process.once('close', (exitCode: number) => {
+        if (exitCode !== 0) {
+          error = true
+
+          if (exitCode === -2) {
+            console.warn(
+              'There was an error. Double-check that you have installed rush via "npm install -g @microsoft/rush'
+            )
+          }
+        }
+        if (!resolved) {
+          resolved = true
+          resolve(exitCode)
+        }
+      })
+    })
+  }
 
   return { error }
 }
@@ -165,6 +182,7 @@ async function main() {
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
     let scripts = null
+
     try {
       scripts = await createRushPrompt(choices, allScriptNames, projects)
     } catch (e) {
@@ -214,7 +232,7 @@ async function main() {
           rushBuildProcess = spawnStreaming(
             executable,
             args,
-            { cwd: rushRootDir },
+            { cwd: rushRootDir, stdio: 'inherit' },
             'smart rush build'
           )
           // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
@@ -258,6 +276,8 @@ async function main() {
       console.log('Starting main scripts')
 
       await awaitProcesses(runScripts(scripts.main))
+    } else {
+      throw new Error('there was an error')
     }
 
     // eslint-disable-next-line
