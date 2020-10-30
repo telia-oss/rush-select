@@ -10,23 +10,31 @@
   "bin": {
     "rush-select": "index.js"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node index.js",
-    "debug": "cd mocks && node ../index.js",
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "start": "tsc && node index.js",
+    "lint": "eslint . --ext .ts",
+    "debug": "tsc && cd mocks && node ../dist/index.js",
     "test": "jest",
-    "test-watch": " FORCE_COLOR=true npm run test -- --watch --runInBand"
+    "test:watch": " FORCE_COLOR=true npm run test -- --watch --runInBand"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.6.0",
+    "@typescript-eslint/parser": "^4.6.0",
     "eslint": "^7.12.1",
     "eslint-plugin-jest": "^24.1.0",
     "husky": "^4.3.0",
     "jest": "^26.6.1",
+    "@types/jest": "^26.0.15",
     "lint-staged": "^10.5.0",
     "prettier": "^2.1.2",
-    "pretty-quick": "^2.0.2"
+    "pretty-quick": "^2.0.2",
+    "ts-jest": "^26.4.3"
   },
   "dependencies": {
+    "typescript": "^4.0.5",
     "@lerna/child-process": "^3.13.3",
     "ansi-colors": "^3.2.4",
     "ansi-styles": "^4.3.0",

@@ -30,6 +30,17 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug the prompt in ts",
+      "cwd": "${workspaceFolder}/mocks",
+      "program": "${workspaceFolder}/index.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/*.js"],
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug the prompt using mybusiness",
       "cwd": "/home/whf962/Repos/mybusiness-fe",
       "program": "${workspaceFolder}/index.js",

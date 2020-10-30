@@ -1,12 +1,10 @@
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'colors'.
-const colors = require('ansi-colors')
+import colors from 'ansi-colors';
 const stripAnsi = require('strip-ansi')
 // const ansiStyles = require('ansi-styles')
 const ArrayPrompt = require('enquirer/lib/types/array')
 const utils = require('enquirer/lib/utils')
 const fuzzy = require('fuzzy')
 
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'RushSelect... Remove this comment to see the full error message
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
     // @ts-expect-error ts-migrate(2339) FIXME: Property 'ignoreText' does not exist on type '{}'.
@@ -617,7 +615,6 @@ class RushSelect extends ArrayPrompt {
       choicesAndCategories.push(renderedChoice)
     }
 
-    // @ts-expect-error ts-migrate(2339) FIXME: Property 'flat' does not exist on type 'any[]'.
     const visible = (await Promise.all(choicesAndCategories)).flat()
     return this.margin[0] + visible.join('\n')
   }

@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'path'.
 const path = require('path')
 
 const { spawnStreaming } = require('@lerna/child-process')
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'colors'.
 const colors = require('ansi-colors')
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'RushSelect... Remove this comment to see the full error message
 const RushSelect = require('./prompt')
-const { createChoices, setInitialValuesOnChoices } = require('./choice-generation.js')
-const { save, load } = require('./save-load.js')
+const { createChoices, setInitialValuesOnChoices } = require('./choice-generation')
+const { save, load } = require('./save-load')
 const { getProjectsAndRespectivePackageJson, getRushRootDir } = require('./rush-utils')
 
-const { getArgs } = require('./yargs.js')
+const { getArgs } = require('./yargs')
 const { argv } = getArgs()
 
 // scripts that should be executed with this prompt. Can be edited, shouldn't break anything
@@ -28,10 +25,10 @@ if (argv.exclude === undefined) {
   argv.exclude = [argv.exclude]
 }
 
-const isScriptNameAllowed = (scriptName: any) => (argv.include === null || argv.include.includes(scriptName)) &&
-(argv.exclude === null || !argv.exclude.includes(scriptName))
+const isScriptNameAllowed = (scriptName: any) =>
+  (argv.include === null || argv.include.includes(scriptName)) &&
+  (argv.exclude === null || !argv.exclude.includes(scriptName))
 
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'rushRootDi... Remove this comment to see the full error message
 const rushRootDir = getRushRootDir()
 
 const createRushPrompt = async (choices: any, allScriptNames: any, projects: any) => {
@@ -86,9 +83,7 @@ const createRushPrompt = async (choices: any, allScriptNames: any, projects: any
   }
 
   scriptsToRun
-    .filter(({
-    script
-  }: any) => script !== undefined)
+    .filter(({ script }: any) => script !== undefined)
     .forEach((item: any) => {
       if (item === null) {
         return
@@ -130,20 +125,14 @@ const runScripts = (scriptsToRun: any) => {
   }, 0)
 
   return scriptsToRun.map(
-    ({
-      packageName,
-      script,
-      project,
-      scriptExecutable = 'npm',
-      scriptCommand = ['run']
-    }: any) =>
+    ({ packageName, script, project, scriptExecutable = 'npm', scriptCommand = ['run'] }: any) =>
       spawnStreaming(
         scriptExecutable,
         scriptCommand.concat(script),
         { cwd: project ? path.resolve(rushRootDir, project.projectFolder) : rushRootDir },
         getPrefix(packageName, script).padEnd(longestSequence, ' ')
       )
-  );
+  )
 }
 
 // makes user able to CTRL + C during execution
@@ -152,14 +141,15 @@ const awaitProcesses = async (processes: any) => {
 
   await Promise.all(
     processes.map(
-      (p: any) => new Promise((resolve) => {
-        p.once('exit', (exitCode: any) => {
-          if (exitCode !== 0) {
-            error = true
-          }
-          resolve(exitCode)
+      (p: any) =>
+        new Promise((resolve) => {
+          p.once('exit', (exitCode: any) => {
+            if (exitCode !== 0) {
+              error = true
+            }
+            resolve(exitCode)
+          })
         })
-      })
     )
   )
 
@@ -178,7 +168,11 @@ async function main() {
     try {
       scripts = await createRushPrompt(choices, allScriptNames, projects)
     } catch (e) {
-      // that's ok
+      if (e === '') {
+        // user aborted prompt
+        return
+      }
+      throw e
     }
 
     if (scripts === null) {
@@ -223,7 +217,7 @@ async function main() {
             { cwd: rushRootDir },
             'smart rush build'
           )
-        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
+          // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'regular') {
           const executable = 'rush'
           const args = ['build']
@@ -236,7 +230,7 @@ async function main() {
             { cwd: rushRootDir },
             'incremental rush build'
           )
-        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
+          // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'rebuild') {
           const executable = 'rush'
           const args = ['rebuild']

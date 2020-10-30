@@ -1,7 +1,5 @@
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'path'.
-const path = require('path')
-// @ts-expect-error ts-migrate(2451) FIXME: Cannot redeclare block-scoped variable 'fs'.
-const fs = require('fs')
+import path from "path";
+import fs from "fs";
 
 const answersFilePath = path.resolve(__dirname, '.cached-answers.json')
 
@@ -9,7 +7,7 @@ module.exports = {
   save: (rushRootDir: any, projectsToRun: any) => {
     let preExistingData
     try {
-      preExistingData = JSON.parse(fs.readFileSync(answersFilePath))
+      preExistingData = JSON.parse(fs.readFileSync(answersFilePath).toString())
     } catch (e) {
       if (e.code === 'ENOENT') {
         // no cached answers, that's ok.
@@ -32,17 +30,13 @@ module.exports = {
     // add to existing results, if any
     preExistingData[rushRootDir] = projectsToRunByNameJsonFriendly
 
-    fs.writeFileSync(answersFilePath, JSON.stringify(preExistingData, undefined, 4), (e: any) => {
-      if (e) {
-        throw e
-      }
-    })
+    fs.writeFileSync(answersFilePath, JSON.stringify(preExistingData, undefined, 4))
   },
   load: (rushRootDir: any) => {
     let cachedAnswers = {}
 
     try {
-      cachedAnswers = JSON.parse(fs.readFileSync(answersFilePath))
+      cachedAnswers = JSON.parse(fs.readFileSync(answersFilePath).toString())
     } catch (e) {
       if (e.code === 'ENOENT') {
         // no cached answers, that's ok.
