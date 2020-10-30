@@ -50,6 +50,12 @@ class RushSelect extends ArrayPrompt {
         ...this.scale,
         ...executionGroup.scriptNames.map((name) => ({ name, executionGroupIndex: index }))
       ]
+
+      this.choices.forEach((choice) => {
+        if (typeof choice.initial === 'string' && choice.initial !== '') {
+          choice.initial = this.scale.findIndex((s) => s.name === choice.initial) - 1
+        }
+      })
     })
 
     this.choices.forEach((choice) => {
@@ -62,7 +68,9 @@ class RushSelect extends ArrayPrompt {
       )
 
       // increase initial by 1, since we added "ignore"
-      choice.initial++
+      if (choice.initial !== undefined) {
+        choice.initial++
+      }
     })
 
     this.choices = this.getSortedChoices(this.choices)
@@ -191,9 +199,9 @@ class RushSelect extends ArrayPrompt {
 
       ch.initial = ch.initial || 0
 
-      if (!this.isValidScaleItem(this.scale[ch.initial], ch)) {
-        ch.initial = 0
-      }
+      // if (!this.isValidScaleItem(this.scale[ch.initial], ch)) {
+      //   ch.initial = 0
+      // }
 
       ch.scaleIndex = ch.initial
       ch.scale = []

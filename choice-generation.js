@@ -53,9 +53,10 @@ module.exports = {
         }
 
         if (scriptFilterFn(savedProjectScript.script)) {
-          choices[foundChoiceIndex].initial = choices[foundChoiceIndex].availableScripts.indexOf(
-            savedProjectScript.script
-          )
+          choices[foundChoiceIndex].initial = savedProjectScript.script
+          // choices[foundChoiceIndex].initial = choices[foundChoiceIndex].availableScripts.indexOf(
+          //   savedProjectScript.script
+          // )
         }
 
         // mark as used
