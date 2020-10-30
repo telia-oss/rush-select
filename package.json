@@ -37,17 +37,5 @@
     "strip-ansi": "^6.0.0",
     "yargs": "^15.4.1"
   },
-  "license": "MIT",
-  "lint-staged": {
-    "*.{js,jsx}": [
-      "pretty-quick --staged",
-      "eslint . --fix",
-      "git add"
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  }
+  "license": "MIT"
 }
