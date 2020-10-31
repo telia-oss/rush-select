@@ -82,7 +82,7 @@ const setup = async () => {
     mockReadyResolve = resolve
   })
   jest.mock('./prompt', () => {
-    return class RushSelect extends jest.requireActual('./prompt') {
+    return class RushSelect extends jest.requireActual('./prompt').default {
       stdout: any
       constructor(options: any) {
         super(options)

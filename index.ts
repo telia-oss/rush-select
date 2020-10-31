@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-const path = require('path')
+import path from 'path'
 
-const { spawnStreaming } = require('@lerna/child-process')
-const colors = require('ansi-colors')
-const RushSelect = require('./prompt')
-const { createChoices, setInitialValuesOnChoices } = require('./choice-generation')
-const { save, load } = require('./save-load')
-const { getProjectsAndRespectivePackageJson, getRushRootDir } = require('./rush-utils')
+import { spawnStreaming } from '@lerna/child-process'
+import colors from 'ansi-colors'
+import RushSelect from './prompt'
+import { createChoices, setInitialValuesOnChoices } from './choice-generation'
+import { save, load } from './save-load'
+import { getProjectsAndRespectivePackageJson, getRushRootDir } from './rush-utils'
 
-const { getArgs } = require('./yargs')
+import { getArgs } from './yargs'
 const { argv } = getArgs()
 
 // scripts that should be executed with this prompt. Can be edited, shouldn't break anything
@@ -29,14 +29,10 @@ const isScriptNameAllowed = (scriptName: any) =>
   (argv.include === null || argv.include.includes(scriptName)) &&
   (argv.exclude === null || !argv.exclude.includes(scriptName))
 
-const rushRootDir = getRushRootDir()
-
 const createRushPrompt = async (choices: any, allScriptNames: any, projects: any) => {
   const rushSelect = new RushSelect({
     name: 'rush-select',
     message:
-      // @ts-expect-error ts-migrate(2339) FIXME: Property 'extraWarn' does not exist on type 'Globa... Remove this comment to see the full error message
-      (global.extraWarn ? global.extraWarn + '\n\n' : '') +
       'Select what to run. Use left/right arrows to change options, Enter key starts execution.',
     messageWidth: 150,
     margin: [0, 1, 0, 0],
@@ -111,7 +107,7 @@ const createRushPrompt = async (choices: any, allScriptNames: any, projects: any
       }
     })
 
-  save(rushRootDir, scripts.main)
+  save(getRushRootDir(), scripts.main)
 
   return scripts
 }
@@ -129,7 +125,7 @@ const runScripts = (scriptsToRun: any) => {
       spawnStreaming(
         scriptExecutable,
         scriptCommand.concat(script),
-        { cwd: project ? path.resolve(rushRootDir, project.projectFolder) : rushRootDir },
+        { cwd: project ? path.resolve(getRushRootDir(), project.projectFolder) : getRushRootDir() },
         getPrefix(packageName, script).padEnd(longestSequence, ' ')
       )
   )
@@ -178,7 +174,7 @@ async function main() {
 
   do {
     const { choices, allScriptNames } = createChoices(projects, isScriptNameAllowed)
-    const savedProjectScripts = load(rushRootDir)
+    const savedProjectScripts = load(getRushRootDir())
     setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
 
     let scripts = null
@@ -232,7 +228,7 @@ async function main() {
           rushBuildProcess = spawnStreaming(
             executable,
             args,
-            { cwd: rushRootDir, stdio: 'inherit' },
+            { cwd: getRushRootDir(), stdio: 'inherit' },
             'smart rush build'
           )
           // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
@@ -245,7 +241,7 @@ async function main() {
           rushBuildProcess = spawnStreaming(
             executable,
             args,
-            { cwd: rushRootDir },
+            { cwd: getRushRootDir() },
             'incremental rush build'
           )
           // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
@@ -260,7 +256,12 @@ async function main() {
               args.join(' ')
           )
 
-          rushBuildProcess = spawnStreaming(executable, args, { cwd: rushRootDir }, 'rush rebuild')
+          rushBuildProcess = spawnStreaming(
+            executable,
+            args,
+            { cwd: getRushRootDir() },
+            'rush rebuild'
+          )
         }
 
         if (rushBuildProcess) {

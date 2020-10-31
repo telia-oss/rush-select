@@ -1,9 +1,8 @@
 import colors from 'ansi-colors'
-const stripAnsi = require('strip-ansi')
-// const ansiStyles = require('ansi-styles')
-const ArrayPrompt = require('enquirer/lib/types/array')
-const utils = require('enquirer/lib/utils')
-const fuzzy = require('fuzzy')
+import stripAnsi from 'strip-ansi'
+import ArrayPrompt from 'enquirer/lib/types/array'
+import utils from 'enquirer/lib/utils'
+import fuzzy from 'fuzzy'
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -726,4 +725,4 @@ class RushSelect extends ArrayPrompt {
   }
 }
 
-module.exports = RushSelect
+export default RushSelect
