@@ -14,8 +14,32 @@ export interface Choice {
   initial?: string
 }
 
-export interface ChoiceInPrompt extends Choice {
+export interface Scale {
+  index: number
+}
+
+export interface ChoiceInPrompt {
   allowMultipleScripts: boolean
+  ansiLessName?: string
+  scaleIndex: number
+  hint?: string
+  name: string
+  category: string
+  availableScripts: string[]
+  executionGroupIndex?: number
+  initial: number
+  normalized: boolean
+  message: string
+  value: string
+  input: string
+  index: number
+  cursor: number
+  level: number
+  indent: string
+  path: string
+  enabled: boolean
+  scale: Scale[]
+  customSortText?: string
 }
 
 export interface Project {

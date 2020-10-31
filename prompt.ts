@@ -3,7 +3,7 @@ import stripAnsi from 'strip-ansi'
 import ArrayPrompt from 'enquirer/lib/types/array'
 import utils from 'enquirer/lib/utils'
 import fuzzy from 'fuzzy'
-import { ChoiceInPrompt } from './interfaces'
+import { ChoiceInPrompt, Scale } from './interfaces'
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -123,7 +123,7 @@ class RushSelect extends ArrayPrompt {
     )
 
     this.filterText = ''
-    const keyPressHandler = (ch: ChoiceInPrompt, key: any) => {
+    const keyPressHandler = (ch: string, key: any) => {
       this.onKeyPress(ch, key)
     }
     this.on('keypress', keyPressHandler)
@@ -139,7 +139,7 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
-  getSortedChoices(choices: Array<Choice>) {
+  getSortedChoices(choices: Array<ChoiceInPrompt>) {
     return choices.sort((a: ChoiceInPrompt, b: ChoiceInPrompt) => {
       const customSortOrder = (input: string) => {
         switch (input) {
@@ -157,7 +157,7 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
-  onKeyPress(ch: ChoiceInPrompt, key: any) {
+  onKeyPress(ch: string, key: any): void {
     const noFilterPreviouslyApplied = this.filterText === ''
     const wasDelete = this.filterText !== '' && key.action === 'delete'
 
@@ -341,7 +341,8 @@ class RushSelect extends ArrayPrompt {
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
       const isLastOccurrence =
-        choicesToModify.filter((ch: ChoiceInPrompt) => ch.name === choice.name).pop().index === choice.index
+        choicesToModify.filter((ch: ChoiceInPrompt) => ch.name === choice.name).pop().index ===
+        choice.index
 
       choicesToModify.splice(choice.index, 1)
 
@@ -412,7 +413,7 @@ class RushSelect extends ArrayPrompt {
    * Render a scale indicator => ignore ── build ── build:prod
    */
 
-  scaleIndicator(choice: ChoiceInPrompt, item: any, choiceIndex: any) {
+  scaleIndicator(choice: ChoiceInPrompt, item: Scale, choiceIndex: number): string {
     const scaleItem = this.scale[item.index]
     const scaleItemIsSelected = choice.scaleIndex === item.index
     const choiceIsFocused = this.index === choiceIndex
@@ -429,14 +430,14 @@ class RushSelect extends ArrayPrompt {
     return this.styles.default('  ' + scaleItem.name + '  ')
   }
 
-  getChoiceSelectedScriptIndex(choice: ChoiceInPrompt) {
+  getChoiceSelectedScriptIndex(choice: ChoiceInPrompt): number {
     return this.getChoiceAvailableScriptIndexes(choice).findIndex(
       (item: any) => item.index === choice.scaleIndex
     )
   }
 
-  getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt) {
-    return choice.scale.filter((s: any) => this.isScriptAvailable(this.scale[s.index], choice))
+  getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt): Array<any> {
+    return choice.scale.filter((s: Scale) => this.isScriptAvailable(this.scale[s.index], choice))
   }
 
   /**
@@ -444,7 +445,7 @@ class RushSelect extends ArrayPrompt {
    */
   renderScale(choice: ChoiceInPrompt, i: number, maxScaleItemsOnScreen: number) {
     let scaleItems = choice.scale
-      .map((item: any) => this.scaleIndicator(choice, item, i))
+      .map((item: Scale) => this.scaleIndicator(choice, item, i))
       .filter((i: string) => i !== '')
 
     const choiceScaleIndex = this.getChoiceSelectedScriptIndex(choice)
@@ -499,7 +500,7 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
-  get limit() {
+  get limit(): number {
     const { state, options, choices } = this
     const limit = state.limit || this._limit || options.limit || choices.length
 
@@ -529,7 +530,8 @@ class RushSelect extends ArrayPrompt {
 
     let maxScaleItemsOnScreen = 20
 
-    const pad = (str: any) => this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
+    const pad = (str: string) =>
+      this.margin[3] + str.replace(/\s+$/, '').padEnd(this.widths[0], ' ')
     const newline = this.newline
     const ind = this.indent()
     const message = await this.resolve(choice.message, this.state, choice, i)
@@ -541,7 +543,7 @@ class RushSelect extends ArrayPrompt {
       this.longestPackageNameLength + margin - this.shortestPackageNameLength
     )
     const msg = utils.wordWrap(message, { width: this.widths[0], newline })
-    let lines = msg.split('\n').map((line: any) => pad(line) + this.margin[1])
+    let lines = msg.split('\n').map((line: string) => pad(line) + this.margin[1])
 
     let selectedBulletCharacter = '─'
     let bulletCharacter = ' '
@@ -566,7 +568,7 @@ class RushSelect extends ArrayPrompt {
     }
 
     if (focused) {
-      lines = lines.map((line: any) =>
+      lines = lines.map((line: string) =>
         this.styles.hasAnsi(line) ? line : this.styles.danger(line)
       )
       lines[0] = bulletIndentation ? selectedBulletCharacter + '─> ' + lines[0] : '> '
@@ -604,18 +606,20 @@ class RushSelect extends ArrayPrompt {
     return choice.category !== this.options.uncategorizedText
   }
 
-  areAllChoicesUncategorized(choices: Array<Choice>): boolean {
+  areAllChoicesUncategorized(choices: Array<ChoiceInPrompt>): boolean {
     return choices.every((ch: ChoiceInPrompt) => ch.category === this.options.uncategorizedText)
   }
 
-  async renderChoicesAndCategories() {
+  async renderChoicesAndCategories(): Promise<string | Array<string>> {
     if (this.state.submitted) return ''
     this.tableize()
 
     // fix the indexing?
-    this.visible.forEach((ch: ChoiceInPrompt, index: any) => (ch.index = index))
+    this.visible.forEach((ch: ChoiceInPrompt, index: number) => (ch.index = index))
 
-    const categorizedChoicesExist = this.visible.some((ch: ChoiceInPrompt) => this.isChoiceCategorized(ch))
+    const categorizedChoicesExist = this.visible.some((ch: ChoiceInPrompt) =>
+      this.isChoiceCategorized(ch)
+    )
 
     const choicesAndCategories = []
     for (let i = 0; i < this.visible.length; i++) {
@@ -637,14 +641,17 @@ class RushSelect extends ArrayPrompt {
     return this.margin[0] + visible.join('\n')
   }
 
-  async getFilterHeading() {
+  async getFilterHeading(): Promise<string> {
     if (this.filterText !== '') {
       return 'Filtering by: ' + this.filterText + '\n'
     }
     return '[Type to filter -- up/down: change selected project -- left/right: switch scripts to run]\n'
   }
 
-  getFilteredChoices(filterText: any, choices: Array<Choice> /*, defaultItem*/) {
+  getFilteredChoices(
+    filterText: string,
+    choices: Array<ChoiceInPrompt> /*, defaultItem*/
+  ): Array<ChoiceInPrompt> {
     return this.getSortedChoices(
       fuzzy
         .filter(filterText || '', choices, {
@@ -653,7 +660,7 @@ class RushSelect extends ArrayPrompt {
           // post: ansiStyles.green.close,
           extract: (choice: ChoiceInPrompt) => choice.ansiLessName || stripAnsi(choice.name)
         })
-        .map((e: any) => {
+        .map((e: { string: any; original: any }) => {
           e.original.ansiLessName = stripAnsi(e.string)
           e.original.name = e.string
           e.original.message = e.string
