@@ -2,16 +2,12 @@
 // let mockLastLoadedResult = {}
 
 const setup = async () => {
-  // @ts-ignore
-  global.console = {
-    log: jest.fn(), // console.log are ignored in tests
-
+  ;(global.console.log = jest.fn()), // console.log are ignored in tests
     // Keep native behaviour for other methods, use those to print out things in your own tests, not `console.log`
-    error: console.error,
-    warn: console.warn,
-    info: console.info,
-    debug: console.debug
-  }
+    (global.console.error = console.error)
+  global.console.warn = console.warn
+  global.console.info = console.info
+  global.console.debug = console.debug
 
   let mockLastSavedResult
   let mockLastLoadedResult: any

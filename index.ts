@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import path from 'path'
 
+import { Choice, Project } from './interfaces'
 import { spawnStreaming } from '@lerna/child-process'
+import child_process from 'child_process'
 import colors from 'ansi-colors'
 import RushSelect from './prompt'
 import { createChoices, setInitialValuesOnChoices } from './choice-generation'
@@ -25,11 +27,15 @@ if (argv.exclude === undefined) {
   argv.exclude = [argv.exclude]
 }
 
-const isScriptNameAllowed = (scriptName: any) =>
+const isScriptNameAllowed = (scriptName: string) =>
   (argv.include === null || argv.include.includes(scriptName)) &&
   (argv.exclude === null || !argv.exclude.includes(scriptName))
 
-const createRushPrompt = async (choices: any, allScriptNames: any, projects: any) => {
+const createRushPrompt = async (
+  choices: Array<Choice>,
+  allScriptNames: Array<string>,
+  projects: Array<Project>
+) => {
   const rushSelect = new RushSelect({
     name: 'rush-select',
     message:
@@ -61,32 +67,37 @@ const createRushPrompt = async (choices: any, allScriptNames: any, projects: any
     ],
     edgeLength: 2,
     // the description above the items
-    scale: allScriptNames.sort().map((name: any) => ({
+    scale: allScriptNames.sort().map((name: string) => ({
       name
     }))
   })
 
-  const scriptsToRun = await rushSelect.run()
+  const scriptsToRun: Array<Project> = await rushSelect.run()
 
   if (scriptsToRun.length === 0) {
     return null
   }
 
-  const scripts = {
+  interface Scripts {
+    pre: Array<Project>
+    rushBuild: undefined | Project
+    main: Array<Project>
+  }
+
+  const scripts: Scripts = {
     pre: [],
     rushBuild: undefined,
     main: []
   }
 
   scriptsToRun
-    .filter(({ script }: any) => script !== undefined)
-    .forEach((item: any) => {
+    .filter((item: Project) => item.script !== undefined)
+    .forEach((item: Project) => {
       if (item === null) {
         return
       }
 
       if (item.packageName === 'rush') {
-        // @ts-expect-error ts-migrate(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
         scripts.pre.push(item)
         return
       }
@@ -97,7 +108,7 @@ const createRushPrompt = async (choices: any, allScriptNames: any, projects: any
       }
 
       // add project reference
-      const project = projects.find((p: any) => p.packageName === item.packageName)
+      const project = projects.find((p: Project) => p.packageName === item.packageName)
       if (project) {
         scripts.main.push({
           ...item,
@@ -112,27 +123,30 @@ const createRushPrompt = async (choices: any, allScriptNames: any, projects: any
   return scripts
 }
 
-const runScripts = (scriptsToRun: any) => {
-  const getPrefix = (packageName: any, script: any) => packageName + ' > ' + script + ' '
-  const longestSequence = scriptsToRun.reduce((val: any, curr: any) => {
+const runScripts = (scriptsToRun: Array<Project>) => {
+  const getPrefix = (packageName: string, script: string) => packageName + ' > ' + script + ' '
+  const longestSequence = scriptsToRun.reduce((val: number, curr: Project) => {
     const result = getPrefix(curr.packageName, curr.script).length
 
     return result > val ? result : val
   }, 0)
 
-  return scriptsToRun.map(
-    ({ packageName, script, project, scriptExecutable = 'npm', scriptCommand = ['run'] }: any) =>
-      spawnStreaming(
-        scriptExecutable,
-        scriptCommand.concat(script),
-        { cwd: project ? path.resolve(getRushRootDir(), project.projectFolder) : getRushRootDir() },
-        getPrefix(packageName, script).padEnd(longestSequence, ' ')
-      )
+  return scriptsToRun.map((project: Project) =>
+    spawnStreaming(
+      project.scriptExecutable,
+      (project.scriptCommand || []).concat(project.script),
+      {
+        cwd: project
+          ? path.resolve(getRushRootDir(), project.projectFolder || '')
+          : getRushRootDir()
+      },
+      getPrefix(project.packageName, project.script).padEnd(longestSequence, ' ')
+    )
   )
 }
 
 // makes user able to CTRL + C during execution
-const awaitProcesses = async (processes: any) => {
+const awaitProcesses = async (processes: Array<child_process.ChildProcess>) => {
   let error = false
 
   for (const process of processes) {
@@ -210,14 +224,12 @@ async function main() {
       // get unique package names that are set to run scripts
       const packagesThatWillRunScripts = Array.from(
         scripts.main.reduce((set, item) => {
-          // @ts-expect-error ts-migrate(2339) FIXME: Property 'packageName' does not exist on type 'nev... Remove this comment to see the full error message
           set.add(item.packageName)
           return set
         }, new Set())
       )
 
       if (scripts.rushBuild) {
-        // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         if (scripts.rushBuild.script === 'smart' && packagesThatWillRunScripts.length > 0) {
           const executable = 'rush'
           // @ts-expect-error ts-migrate(2339) FIXME: Property 'flat' does not exist on type 'unknown[][... Remove this comment to see the full error message
@@ -231,7 +243,6 @@ async function main() {
             { cwd: getRushRootDir(), stdio: 'inherit' },
             'smart rush build'
           )
-          // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'regular') {
           const executable = 'rush'
           const args = ['build']
@@ -244,7 +255,6 @@ async function main() {
             { cwd: getRushRootDir() },
             'incremental rush build'
           )
-          // @ts-expect-error ts-migrate(2532) FIXME: Object is possibly 'undefined'.
         } else if (scripts.rushBuild.script === 'rebuild') {
           const executable = 'rush'
           const args = ['rebuild']

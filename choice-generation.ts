@@ -1,12 +1,14 @@
-export const createChoices = (projects: any, scriptFilterFn = (_: any) => true) => {
+import { Choice, Project, Package } from './interfaces'
+
+export const createChoices = (projects: Array<Project>, scriptFilterFn = (_: any) => true) => {
   const tempSet = new Set<string>([])
 
   const choices = projects
     // some projects may not have a single script that is allowed to run, so filter them out
-    .filter((project: any) =>
+    .filter((project: Project) =>
       Object.keys(project.packageJson.scripts).some((scriptName) => scriptFilterFn(scriptName))
     )
-    .reduce((total: Array<any>, project: any) => {
+    .reduce((total: Array<Choice>, project: Project) => {
       // keep track of the scripts that were found
       if (project.packageJson.scripts) {
         Object.keys(project.packageJson.scripts).forEach((s) => tempSet.add(s))
@@ -32,15 +34,15 @@ export const createChoices = (projects: any, scriptFilterFn = (_: any) => true) 
 }
 
 export const setInitialValuesOnChoices = (
-  choices: any,
-  savedProjectScripts: any,
-  scriptFilterFn = (_: any) => true
-) => {
+  choices: Array<Choice>,
+  savedProjectScripts: Array<Package>,
+  scriptFilterFn: (param: string) => boolean
+): void => {
   // set the initial values, if possible
-  const usedChoices: Array<any> = []
-  savedProjectScripts.forEach((savedProjectScript: any) => {
+  const usedChoices: Array<Choice> = []
+  savedProjectScripts.forEach((savedProjectScript: Package) => {
     let foundChoiceIndex = choices.findIndex(
-      (unusedChoice: any) => unusedChoice.name === savedProjectScript.packageName
+      (unusedChoice: Choice) => unusedChoice.name === savedProjectScript.packageName
     )
 
     if (foundChoiceIndex !== -1) {
@@ -56,7 +58,7 @@ export const setInitialValuesOnChoices = (
         foundChoiceIndex++
       }
 
-      if (scriptFilterFn(savedProjectScript.script)) {
+      if (!scriptFilterFn || scriptFilterFn(savedProjectScript.script)) {
         choices[foundChoiceIndex].initial = savedProjectScript.script
         // choices[foundChoiceIndex].initial = choices[foundChoiceIndex].availableScripts.indexOf(
         //   savedProjectScript.script
