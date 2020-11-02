@@ -3,7 +3,7 @@ import stripAnsi from 'strip-ansi'
 import ArrayPrompt from 'enquirer/lib/types/array'
 import utils from 'enquirer/lib/utils'
 import fuzzy from 'fuzzy'
-import { ChoiceInPrompt, Scale } from './interfaces'
+import { ChoiceInPrompt, ScaleWithIndex, ScaleWithName, KeyPressEvent } from './interfaces'
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -40,7 +40,7 @@ class RushSelect extends ArrayPrompt {
     }
 
     // @ts-expect-error ts-migrate(2339) FIXME: Property 'executionGroups' does not exist on type ... Remove this comment to see the full error message
-    options.executionGroups.forEach((executionGroup: any, index: any) => {
+    options.executionGroups.forEach((executionGroup: any, index: number) => {
       this.choices.unshift({
         ...executionGroup,
         name: executionGroup.name,
@@ -67,7 +67,7 @@ class RushSelect extends ArrayPrompt {
 
       this.choices.forEach((choice: ChoiceInPrompt) => {
         if (typeof choice.initial === 'string' && choice.initial !== '') {
-          choice.initial = this.scale.findIndex((s: any) => s.name === choice.initial) - 1
+          choice.initial = this.scale.findIndex((s: ScaleWithName) => s.name === choice.initial) - 1
         }
       })
     })
@@ -92,24 +92,27 @@ class RushSelect extends ArrayPrompt {
     this.choices = this.getSortedChoices(this.choices)
 
     // for padding
-    this.longestPackageNameLength = this.choices.reduce((val: any, curr: any) => {
+    this.longestPackageNameLength = this.choices.reduce((longest: number, curr: ChoiceInPrompt) => {
       const result = curr.name.length + 4
 
-      return result > val ? result : val
+      return result > longest ? result : longest
     }, 0)
 
     // for padding
-    this.shortestPackageNameLength = this.choices.reduce((val: any, curr: any) => {
-      const result = curr.name.length
+    this.shortestPackageNameLength = this.choices.reduce(
+      (shortest: number, curr: ChoiceInPrompt) => {
+        const result = curr.name.length
 
-      return result < val ? result : val
-    }, this.longestPackageNameLength)
+        return result < shortest ? result : shortest
+      },
+      this.longestPackageNameLength
+    )
 
     // for padding, although not really used atm
     this.longestScaleItemNameLength = Math.min(
-      this.choices.reduce((longest: any, currentChoice: ChoiceInPrompt) => {
+      this.choices.reduce((longest: number, currentChoice: ChoiceInPrompt) => {
         const longestInsideChoice = currentChoice.availableScripts.reduce(
-          (longestInsideChoiceSoFar: any, currentScaleItem: any) => {
+          (longestInsideChoiceSoFar: number, currentScaleItem: string) => {
             return currentScaleItem.length > longestInsideChoiceSoFar
               ? currentScaleItem.length
               : longestInsideChoiceSoFar
@@ -123,7 +126,7 @@ class RushSelect extends ArrayPrompt {
     )
 
     this.filterText = ''
-    const keyPressHandler = (ch: string, key: any) => {
+    const keyPressHandler = (ch: string, key: KeyPressEvent) => {
       this.onKeyPress(ch, key)
     }
     this.on('keypress', keyPressHandler)
@@ -139,7 +142,7 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
-  getSortedChoices(choices: Array<ChoiceInPrompt>) {
+  getSortedChoices(choices: Array<ChoiceInPrompt>): Array<ChoiceInPrompt> {
     return choices.sort((a: ChoiceInPrompt, b: ChoiceInPrompt) => {
       const customSortOrder = (input: string) => {
         switch (input) {
@@ -157,7 +160,7 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
-  onKeyPress(ch: string, key: any): void {
+  onKeyPress(ch: string, key: KeyPressEvent): void {
     const noFilterPreviouslyApplied = this.filterText === ''
     const wasDelete = this.filterText !== '' && key.action === 'delete'
 
@@ -189,14 +192,14 @@ class RushSelect extends ArrayPrompt {
     this.render()
   }
 
-  async reset() {
+  async reset(): Promise<void> {
     this.tableized = false
     await super.reset()
 
     return this.render()
   }
 
-  tableize() {
+  tableize(): void {
     if (this.tableized === true) return
     this.tableized = true
     let longest = 0
@@ -224,18 +227,18 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
-  async dispatch(s: any, key: any) {
+  async dispatch(s: any, key: any): Promise<void> {
     if (this.multiple) {
       return this[key.name] ? await this[key.name](s, key) : await super.dispatch(s, key)
     }
     this.alert()
   }
 
-  separator() {
+  separator(): string {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
-  ignoresLeftFromChoiceScripts(choice: ChoiceInPrompt) {
+  ignoresLeftFromChoiceScripts(choice: ChoiceInPrompt): Array<ChoiceInPrompt> {
     const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
     return this.choices.filter(
@@ -247,7 +250,10 @@ class RushSelect extends ArrayPrompt {
     ).length
   }
 
-  checkIfPackageScriptInstanceShouldBeAdded(choice: ChoiceInPrompt, choicesToModify: any) {
+  checkIfPackageScriptInstanceShouldBeAdded(
+    choice: ChoiceInPrompt,
+    choicesToModify: Array<ChoiceInPrompt>
+  ): void {
     if (choice.allowMultipleScripts === false) {
       return
     }
@@ -307,7 +313,7 @@ class RushSelect extends ArrayPrompt {
     throw new Error('no scale script item available to move to in that direction')
   }
 
-  right() {
+  right(): Promise<void> {
     const choice = this.focused
 
     if (choice.scaleIndex >= this.scale.length - 1) return this.alert()
@@ -316,15 +322,27 @@ class RushSelect extends ArrayPrompt {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('right', choice)
 
       this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
-      return this.render()
     } catch (e) {
       if (e.message !== 'no scale script item available to move to in that direction') {
         throw e
       }
     }
+
+    return this.render()
   }
 
-  checkIfPackageScriptInstanceShouldBeRemoved(choice: ChoiceInPrompt, choicesToModify: any) {
+  checkIfPackageScriptInstanceShouldBeRemoved(
+    choice: ChoiceInPrompt,
+    choicesToModify: Array<ChoiceInPrompt>
+  ): void {
+    if (!choicesToModify) {
+      throw Error('bla')
+    }
+
+    if (!choice) {
+      throw Error('bla')
+    }
+
     if (choice.allowMultipleScripts === false) {
       return
     }
@@ -340,9 +358,8 @@ class RushSelect extends ArrayPrompt {
     const ignoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify)
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
-      const isLastOccurrence =
-        choicesToModify.filter((ch: ChoiceInPrompt) => ch.name === choice.name).pop().index ===
-        choice.index
+      const matching = choicesToModify.filter((ch: ChoiceInPrompt) => ch.name === choice.name)
+      const isLastOccurrence = matching.slice(-1)[0].index === choice.index
 
       choicesToModify.splice(choice.index, 1)
 
@@ -355,7 +372,7 @@ class RushSelect extends ArrayPrompt {
     }
   }
 
-  left() {
+  left(): Promise<void> {
     const choice = this.focused
     if (choice.scaleIndex <= 0) return this.alert()
 
@@ -373,11 +390,11 @@ class RushSelect extends ArrayPrompt {
     return this.render()
   }
 
-  indent() {
+  indent(): string {
     return ''
   }
 
-  format() {
+  format(): string {
     if (this.state.submitted) {
       const values = this.choices.map((ch: ChoiceInPrompt) => this.styles.info(ch.index))
       return values.join(', ')
@@ -385,7 +402,7 @@ class RushSelect extends ArrayPrompt {
     return ''
   }
 
-  pointer() {
+  pointer(): string {
     return ''
   }
 
@@ -394,7 +411,7 @@ class RushSelect extends ArrayPrompt {
    * @return {String}
    */
 
-  renderScaleKey() {
+  renderScaleKey(): string {
     if (this.scaleKey === false) return ''
     if (this.state.submitted) return ''
     const scale = this.scale.map((item: any) => `   ${item.name} - ${item.message}`)
@@ -402,7 +419,7 @@ class RushSelect extends ArrayPrompt {
     return key.join('\n')
   }
 
-  isScriptAvailable(scaleItem: any, choice: ChoiceInPrompt) {
+  isScriptAvailable(scaleItem: any, choice: ChoiceInPrompt): boolean {
     return (
       scaleItem.executionGroupIndex === choice.executionGroupIndex &&
       choice.availableScripts.includes(scaleItem.name)
@@ -413,7 +430,7 @@ class RushSelect extends ArrayPrompt {
    * Render a scale indicator => ignore ── build ── build:prod
    */
 
-  scaleIndicator(choice: ChoiceInPrompt, item: Scale, choiceIndex: number): string {
+  scaleIndicator(choice: ChoiceInPrompt, item: ScaleWithIndex, choiceIndex: number): string {
     const scaleItem = this.scale[item.index]
     const scaleItemIsSelected = choice.scaleIndex === item.index
     const choiceIsFocused = this.index === choiceIndex
@@ -437,7 +454,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt): Array<any> {
-    return choice.scale.filter((s: Scale) => this.isScriptAvailable(this.scale[s.index], choice))
+    return choice.scale.filter((s: ScaleWithIndex) => this.isScriptAvailable(this.scale[s.index], choice))
   }
 
   /**
@@ -445,7 +462,7 @@ class RushSelect extends ArrayPrompt {
    */
   renderScale(choice: ChoiceInPrompt, i: number, maxScaleItemsOnScreen: number) {
     let scaleItems = choice.scale
-      .map((item: Scale) => this.scaleIndicator(choice, item, i))
+      .map((item: ScaleWithIndex) => this.scaleIndicator(choice, item, i))
       .filter((i: string) => i !== '')
 
     const choiceScaleIndex = this.getChoiceSelectedScriptIndex(choice)
@@ -660,7 +677,7 @@ class RushSelect extends ArrayPrompt {
           // post: ansiStyles.green.close,
           extract: (choice: ChoiceInPrompt) => choice.ansiLessName || stripAnsi(choice.name)
         })
-        .map((e: { string: any; original: any }) => {
+        .map((e: { string: string; original: ChoiceInPrompt }) => {
           e.original.ansiLessName = stripAnsi(e.string)
           e.original.name = e.string
           e.original.message = e.string

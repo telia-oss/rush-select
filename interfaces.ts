@@ -1,3 +1,14 @@
+export interface KeyPressEvent {
+  action?: string
+  name: string
+  ctrl: boolean
+  meta: boolean
+  shift: boolean
+  option: boolean
+  sequence: string
+  raw: string
+}
+
 export interface Package {
   packageName: string
   script: string
@@ -14,8 +25,12 @@ export interface Choice {
   initial?: string
 }
 
-export interface Scale {
+export interface ScaleWithIndex {
   index: number
+}
+
+export interface ScaleWithName {
+  name: string
 }
 
 export interface ChoiceInPrompt {
