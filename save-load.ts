@@ -1,10 +1,10 @@
 import path from 'path'
 import fs from 'fs'
-import { Project, Package, SavedEntries } from './interfaces'
+import { SubmittedChoice, Package, SavedEntries } from './interfaces'
 
 const answersFilePath = path.resolve(__dirname, '.cached-answers.json')
 
-export const save = (rushRootDir: string, projectsToRun: Array<Project>): void => {
+export const save = (rushRootDir: string, projectsToRun: Array<SubmittedChoice>): void => {
   let preExistingData
   try {
     preExistingData = JSON.parse(fs.readFileSync(answersFilePath).toString())
@@ -19,9 +19,9 @@ export const save = (rushRootDir: string, projectsToRun: Array<Project>): void =
   }
 
   // json-ify
-  const projectsToRunByNameJsonFriendly: Array<Project> = []
-  projectsToRun.forEach((project: Project) => {
-    const jsonFriendly: Project = { ...project }
+  const projectsToRunByNameJsonFriendly: Array<SubmittedChoice> = []
+  projectsToRun.forEach((project: SubmittedChoice) => {
+    const jsonFriendly: SubmittedChoice = { ...project }
     jsonFriendly.project = undefined
 
     projectsToRunByNameJsonFriendly.push(jsonFriendly)

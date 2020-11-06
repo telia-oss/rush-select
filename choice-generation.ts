@@ -25,6 +25,8 @@ export const createChoices = (
       total.push({
         name: project.packageName,
         category: project.reviewCategory,
+        scriptExecutable: 'npm',
+        scriptCommand: ['run'],
         availableScripts
       })
       return total

@@ -45,6 +45,8 @@ export interface Choice {
   name: string
   category: string
   availableScripts: string[]
+  scriptExecutable: string
+  scriptCommand: Array<string>
   initial?: string | number
 }
 
@@ -83,31 +85,28 @@ export interface ChoiceInPrompt {
 
 export interface Project {
   packageName: string
+  projectFolder: string
+  reviewCategory: string
+  shouldPublish: boolean
+  packageJson: {
+    name: string
+    version: string
+    main: string
+    description: string
+    author: string
+    scripts: {
+      [keys: string]: string
+    }
+    devDependencies: {
+      [keys: string]: string
+    }
+  }
+}
+
+export interface SubmittedChoice {
+  packageName: string
   script: string
   scriptExecutable: string | undefined
   scriptCommand: Array<string> | undefined
-  reviewCategory: string
-  packageJson: any | undefined
-  projectFolder: string | undefined
-  project:
-    | undefined
-    | {
-        packageName: string
-        projectFolder: string
-        reviewCategory: string
-        shouldPublish: boolean
-        packageJson: {
-          name: string
-          version: string
-          main: string
-          description: string
-          author: string
-          scripts: {
-            [keys: string]: string
-          }
-          devDependencies: {
-            [keys: string]: string
-          }
-        }
-      }
+  project: undefined | Project
 }

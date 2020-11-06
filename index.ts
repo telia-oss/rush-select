@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'path'
 
-import { Choice, Project } from './interfaces'
+import { Choice, SubmittedChoice } from './interfaces'
 import { spawnStreaming } from '@lerna/child-process'
 import child_process from 'child_process'
 import colors from 'ansi-colors'
@@ -34,7 +34,7 @@ const isScriptNameAllowed = (scriptName: string): boolean =>
 const createRushPrompt = async (
   choices: Array<Choice>,
   allScriptNames: Array<string>,
-  projects: Array<Project>
+  projects: Array<SubmittedChoice>
 ) => {
   const rushSelect = new RushSelect({
     name: 'rush-select',
@@ -72,16 +72,16 @@ const createRushPrompt = async (
     }))
   })
 
-  const scriptsToRun: Array<Project> = await rushSelect.run()
+  const scriptsToRun: Array<SubmittedChoice> = await rushSelect.run()
 
   if (scriptsToRun.length === 0) {
     return null
   }
 
   interface Scripts {
-    pre: Array<Project>
-    rushBuild: undefined | Project
-    main: Array<Project>
+    pre: Array<SubmittedChoice>
+    rushBuild: undefined | SubmittedChoice
+    main: Array<SubmittedChoice>
   }
 
   const scripts: Scripts = {
@@ -91,8 +91,8 @@ const createRushPrompt = async (
   }
 
   scriptsToRun
-    .filter((item: Project) => item.script !== undefined)
-    .forEach((item: Project) => {
+    .filter((item: SubmittedChoice) => item.script !== undefined)
+    .forEach((item: SubmittedChoice) => {
       if (item === null) {
         return
       }
@@ -108,7 +108,7 @@ const createRushPrompt = async (
       }
 
       // add project reference
-      const project = projects.find((p: Project) => p.packageName === item.packageName)
+      const project = projects.find((p: SubmittedChoice) => p.packageName === item.packageName)
       if (project) {
         scripts.main.push({
           ...item,
@@ -123,26 +123,32 @@ const createRushPrompt = async (
   return scripts
 }
 
-const runScripts = (scriptsToRun: Array<Project>) => {
+const runScripts = (submittedChoices: Array<SubmittedChoice>) => {
   const getPrefix = (packageName: string, script: string) => packageName + ' > ' + script + ' '
-  const longestSequence = scriptsToRun.reduce((val: number, curr: Project) => {
+  const longestSequence = submittedChoices.reduce((val: number, curr: SubmittedChoice) => {
     const result = getPrefix(curr.packageName, curr.script).length
 
     return result > val ? result : val
   }, 0)
 
-  return scriptsToRun.map((project: Project) =>
-    spawnStreaming(
-      project.scriptExecutable,
-      (project.scriptCommand || []).concat(project.script),
-      {
-        cwd: project
-          ? path.resolve(getRushRootDir(), project.projectFolder || '')
-          : getRushRootDir()
-      },
-      getPrefix(project.packageName, project.script).padEnd(longestSequence, ' ')
+  return submittedChoices
+    .filter((submittedChoice) => !!submittedChoice.project)
+    .map((submittedChoice: SubmittedChoice) =>
+      spawnStreaming(
+        submittedChoice.scriptExecutable,
+        (submittedChoice.scriptCommand || []).concat(submittedChoice.script),
+        {
+          cwd: submittedChoice
+            ? path.resolve(
+                getRushRootDir(),
+                // @ts-expect-error project is not undefined, because we do filtering.
+                submittedChoice.project.projectFolder
+              )
+            : getRushRootDir()
+        },
+        getPrefix(submittedChoice.packageName, submittedChoice.script).padEnd(longestSequence, ' ')
+      )
     )
-  )
 }
 
 // makes user able to CTRL + C during execution
