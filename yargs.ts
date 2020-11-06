@@ -1,6 +1,7 @@
 import yargs from 'yargs'
+import { Argv } from './interfaces'
 
-export const getArgs = (): any =>
+export const getArgs = (): Argv =>
   yargs.usage('$0 --include start --include build:watch -d lint').options({
     include: {
       alias: 'i',
@@ -16,4 +17,4 @@ export const getArgs = (): any =>
         'Set this parameter one or multiple times to specify some scripts that should be filtered out in the prompt.',
       type: 'string'
     }
-  })
+  }).argv

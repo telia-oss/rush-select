@@ -9,6 +9,29 @@ export interface KeyPressEvent {
   raw: string
 }
 
+export interface CreatedChoicesAndScriptNames {
+  choices: Array<Choice>
+  allScriptNames: Array<string>
+}
+
+export interface Argv {
+  i?: string | null | Array<string | null>
+  include?: string | null | Array<string | null>
+  e?: string | null | Array<string | null>
+  exclude?: string | null | Array<string | null>
+}
+
+export interface ExecutionGroup {
+  category: string
+  name: string
+  initial: number
+  scriptNames: Array<string>
+  allowMultipleScripts: boolean
+  scriptExecutable: string
+  customSortText: string
+  scriptCommand: Array<string> | undefined
+}
+
 export interface Package {
   packageName: string
   script: string
@@ -22,7 +45,7 @@ export interface Choice {
   name: string
   category: string
   availableScripts: string[]
-  initial?: string
+  initial?: string | number
 }
 
 export interface ScaleWithIndex {
@@ -31,6 +54,7 @@ export interface ScaleWithIndex {
 
 export interface ScaleWithName {
   name: string
+  executionGroupIndex?: number
 }
 
 export interface ChoiceInPrompt {
@@ -53,7 +77,7 @@ export interface ChoiceInPrompt {
   indent: string
   path: string
   enabled: boolean
-  scale: Scale[]
+  scale: ScaleWithIndex[]
   customSortText?: string
 }
 

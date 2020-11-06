@@ -1,6 +1,9 @@
-import { Choice, Project, Package } from './interfaces'
+import { Choice, Project, Package, CreatedChoicesAndScriptNames } from './interfaces'
 
-export const createChoices = (projects: Array<Project>, scriptFilterFn = (_: any) => true) => {
+export const createChoices = (
+  projects: Array<Project>,
+  scriptFilterFn = (_: any) => true
+): CreatedChoicesAndScriptNames => {
   const tempSet = new Set<string>([])
 
   const choices = projects

@@ -11,7 +11,7 @@ import { save, load } from './save-load'
 import { getProjectsAndRespectivePackageJson, getRushRootDir } from './rush-utils'
 
 import { getArgs } from './yargs'
-const { argv } = getArgs()
+const argv = getArgs()
 
 // scripts that should be executed with this prompt. Can be edited, shouldn't break anything
 // the order of the strings will be preserved in the prompt
@@ -27,9 +27,9 @@ if (argv.exclude === undefined) {
   argv.exclude = [argv.exclude]
 }
 
-const isScriptNameAllowed = (scriptName: string) =>
-  (argv.include === null || argv.include.includes(scriptName)) &&
-  (argv.exclude === null || !argv.exclude.includes(scriptName))
+const isScriptNameAllowed = (scriptName: string): boolean =>
+  !!(argv.include === null || (argv.include && argv.include.includes(scriptName))) &&
+  !!(argv.exclude === null || (argv.exclude && !argv.exclude.includes(scriptName)))
 
 const createRushPrompt = async (
   choices: Array<Choice>,

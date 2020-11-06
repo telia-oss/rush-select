@@ -3,7 +3,14 @@ import stripAnsi from 'strip-ansi'
 import ArrayPrompt from 'enquirer/lib/types/array'
 import utils from 'enquirer/lib/utils'
 import fuzzy from 'fuzzy'
-import { ChoiceInPrompt, ScaleWithIndex, ScaleWithName, KeyPressEvent } from './interfaces'
+import {
+  Choice,
+  ChoiceInPrompt,
+  ScaleWithIndex,
+  ScaleWithName,
+  KeyPressEvent,
+  ExecutionGroup
+} from './interfaces'
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -40,7 +47,7 @@ class RushSelect extends ArrayPrompt {
     }
 
     // @ts-expect-error ts-migrate(2339) FIXME: Property 'executionGroups' does not exist on type ... Remove this comment to see the full error message
-    options.executionGroups.forEach((executionGroup: any, index: number) => {
+    options.executionGroups.forEach((executionGroup: ExecutionGroup, index: number) => {
       this.choices.unshift({
         ...executionGroup,
         name: executionGroup.name,
@@ -65,7 +72,7 @@ class RushSelect extends ArrayPrompt {
         }))
       ]
 
-      this.choices.forEach((choice: ChoiceInPrompt) => {
+      this.choices.forEach((choice: Choice) => {
         if (typeof choice.initial === 'string' && choice.initial !== '') {
           choice.initial = this.scale.findIndex((s: ScaleWithName) => s.name === choice.initial) - 1
         }
@@ -188,6 +195,7 @@ class RushSelect extends ArrayPrompt {
       this.state.visible = undefined
     }
 
+    // this.index = this.choices.findIndex((ch: ChoiceInPrompt) => ch === this.visible[0])
     this.index = 0
     this.render()
   }
@@ -238,7 +246,7 @@ class RushSelect extends ArrayPrompt {
     return this.styles.muted(this.symbols.ellipsis)
   }
 
-  ignoresLeftFromChoiceScripts(choice: ChoiceInPrompt): Array<ChoiceInPrompt> {
+  ignoresLeftFromChoiceScripts(choice: ChoiceInPrompt): number {
     const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
 
     return this.choices.filter(
@@ -288,16 +296,16 @@ class RushSelect extends ArrayPrompt {
     }
   }
 
-  isValidScaleItem(scaleItemName: any, choice: ChoiceInPrompt) {
+  isValidScaleItem(scaleItemName: ScaleWithName, choice: ChoiceInPrompt): boolean {
     return (
       scaleItemName === this.options.ignoreText || this.isScriptAvailable(scaleItemName, choice)
     )
   }
 
-  getNextIndexThatHasAvailableScript(direction: any, choice: ChoiceInPrompt) {
+  getNextIndexThatHasAvailableScript(direction: 'left' | 'right', choice: ChoiceInPrompt): number {
     let nextIndex = choice.scaleIndex + (direction === 'right' ? 1 : -1)
 
-    const isIndexWithinBounds = (i: any) => i >= 0 && i < this.scale.length
+    const isIndexWithinBounds = (i: number) => i >= 0 && i < this.scale.length
 
     while (
       isIndexWithinBounds(nextIndex) &&
@@ -314,7 +322,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   right(): Promise<void> {
-    const choice = this.focused
+    const choice = this.visible[this.index]
 
     if (choice.scaleIndex >= this.scale.length - 1) return this.alert()
 
@@ -373,7 +381,7 @@ class RushSelect extends ArrayPrompt {
   }
 
   left(): Promise<void> {
-    const choice = this.focused
+    const choice = this.visible[this.index]
     if (choice.scaleIndex <= 0) return this.alert()
 
     try {
@@ -419,7 +427,7 @@ class RushSelect extends ArrayPrompt {
     return key.join('\n')
   }
 
-  isScriptAvailable(scaleItem: any, choice: ChoiceInPrompt): boolean {
+  isScriptAvailable(scaleItem: ScaleWithName, choice: ChoiceInPrompt): boolean {
     return (
       scaleItem.executionGroupIndex === choice.executionGroupIndex &&
       choice.availableScripts.includes(scaleItem.name)
@@ -454,13 +462,15 @@ class RushSelect extends ArrayPrompt {
   }
 
   getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt): Array<any> {
-    return choice.scale.filter((s: ScaleWithIndex) => this.isScriptAvailable(this.scale[s.index], choice))
+    return choice.scale.filter((s: ScaleWithIndex) =>
+      this.isScriptAvailable(this.scale[s.index], choice)
+    )
   }
 
   /**
    * Render the actual scale => ◯────◯────◉────◯────◯
    */
-  renderScale(choice: ChoiceInPrompt, i: number, maxScaleItemsOnScreen: number) {
+  renderScale(choice: ChoiceInPrompt, i: number, maxScaleItemsOnScreen: number): string {
     let scaleItems = choice.scale
       .map((item: ScaleWithIndex) => this.scaleIndicator(choice, item, i))
       .filter((i: string) => i !== '')
@@ -533,7 +543,11 @@ class RushSelect extends ArrayPrompt {
    *   "The website is easy to navigate. ◯───◯───◉───◯───◯"
    */
 
-  async renderChoice(choice: ChoiceInPrompt, i: number, bulletIndentation = false) {
+  async renderChoice(
+    choice: ChoiceInPrompt,
+    i: number,
+    bulletIndentation = false
+  ): Promise<Array<string>> {
     await this.onChoice(choice, i)
 
     const focused = this.index === i
@@ -571,8 +585,8 @@ class RushSelect extends ArrayPrompt {
       bulletCharacter = '👻'
     }
 
-    const hasSiblingAbove = this.choices[i - 1] && this.choices[i - 1].name === choice.name
-    const hasSiblingBelow = this.choices[i + 1] && this.choices[i + 1].name === choice.name
+    const hasSiblingAbove = this.visible[i - 1] && this.visible[i - 1].name === choice.name
+    const hasSiblingBelow = this.visible[i + 1] && this.visible[i + 1].name === choice.name
     const hasSiblingsInBothDirections = hasSiblingAbove && hasSiblingBelow
 
     let suffixSymbol = ' '
@@ -687,7 +701,7 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
-  async render() {
+  async render(): Promise<void> {
     const { submitted, size } = this.state
 
     const prefix = await this.prefix()
@@ -717,7 +731,7 @@ class RushSelect extends ArrayPrompt {
     if (output) prompt += output
     if (help && !prompt.includes(help)) prompt += ' ' + help
 
-    if (submitted && !output && !body.trim() && this.multiple && err != null) {
+    if (submitted && !output && !(body as string).trim() && this.multiple && err != null) {
       prompt += this.styles.danger(err)
     }
 
@@ -731,7 +745,7 @@ class RushSelect extends ArrayPrompt {
     this.restore()
   }
 
-  submit() {
+  async submit(): Promise<void> {
     this.value = []
 
     for (const choice of this.choices) {
