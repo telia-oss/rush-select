@@ -2,9 +2,15 @@ import { Choice, Project, Package, CreatedChoicesAndScriptNames } from './interf
 
 export const createChoices = (
   projects: Array<Project>,
-  scriptFilterFn = (_: any) => true
+  scriptFilterFn: (_: string) => boolean = () => true
 ): CreatedChoicesAndScriptNames => {
   const tempSet = new Set<string>([])
+
+  if (!scriptFilterFn) {
+    scriptFilterFn = () => {
+      return true
+    }
+  }
 
   const choices = projects
     // some projects may not have a single script that is allowed to run, so filter them out
@@ -65,9 +71,6 @@ export const setInitialValuesOnChoices = (
 
       if (!scriptFilterFn || scriptFilterFn(savedProjectScript.script)) {
         choices[foundChoiceIndex].initial = savedProjectScript.script
-        // choices[foundChoiceIndex].initial = choices[foundChoiceIndex].availableScripts.indexOf(
-        //   savedProjectScript.script
-        // )
       }
 
       // mark as used

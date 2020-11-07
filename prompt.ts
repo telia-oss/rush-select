@@ -235,7 +235,7 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
-  async dispatch(s: any, key: any): Promise<void> {
+  async dispatch(s: string, key: { name: string }): Promise<void> {
     if (this.multiple) {
       return this[key.name] ? await this[key.name](s, key) : await super.dispatch(s, key)
     }
@@ -422,7 +422,7 @@ class RushSelect extends ArrayPrompt {
   renderScaleKey(): string {
     if (this.scaleKey === false) return ''
     if (this.state.submitted) return ''
-    const scale = this.scale.map((item: any) => `   ${item.name} - ${item.message}`)
+    const scale = this.scale.map((item: ScaleWithName) => `   ${item.name} - ${item.message}`)
     const key = ['', ...scale].map((item) => this.styles.muted(item))
     return key.join('\n')
   }
@@ -457,11 +457,11 @@ class RushSelect extends ArrayPrompt {
 
   getChoiceSelectedScriptIndex(choice: ChoiceInPrompt): number {
     return this.getChoiceAvailableScriptIndexes(choice).findIndex(
-      (item: any) => item.index === choice.scaleIndex
+      (item: ScaleWithIndex) => item.index === choice.scaleIndex
     )
   }
 
-  getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt): Array<any> {
+  getChoiceAvailableScriptIndexes(choice: ChoiceInPrompt): Array<ScaleWithIndex> {
     return choice.scale.filter((s: ScaleWithIndex) =>
       this.isScriptAvailable(this.scale[s.index], choice)
     )
@@ -499,7 +499,7 @@ class RushSelect extends ArrayPrompt {
       scaleItems = scaleItems.slice(sliceStart, sliceStart + maxScaleItemsOnScreen)
     }
 
-    scaleItems = scaleItems.filter((scaleItem: any) => scaleItem)
+    scaleItems = scaleItems.filter((scaleItem: string) => scaleItem)
 
     const padding = this.term === 'Hyper' ? '' : ''
     return (
@@ -531,7 +531,7 @@ class RushSelect extends ArrayPrompt {
     const { state, options, choices } = this
     const limit = state.limit || this._limit || options.limit || choices.length
 
-    const categories = this.choices.reduce((categories: any, val: any) => {
+    const categories = this.choices.reduce((categories: Set<string>, val: ChoiceInPrompt) => {
       categories.add(val.category)
       return categories
     }, new Set())

@@ -1,25 +1,26 @@
 // let mockLastSavedResult = {}
 // let mockLastLoadedResult = {}
+import { SavedEntries, SubmittedChoice } from './interfaces'
 
 const setup = async () => {
-  ;(global.console.log = jest.fn()), // console.log are ignored in tests
-    // Keep native behaviour for other methods, use those to print out things in your own tests, not `console.log`
-    (global.console.error = console.error)
+  global.console.log = jest.fn() // console.log are ignored in tests
+  // Keep native behaviour for other methods, use those to print out things in your own tests, not `console.log`
+  global.console.error = console.error
   global.console.warn = console.warn
   global.console.info = console.info
   global.console.debug = console.debug
 
   let mockLastSavedResult
-  let mockLastLoadedResult: any
+  let mockLastLoadedResult: SavedEntries
 
   jest.mock('./save-load', () => ({
-    save: jest.fn((directory: any, data: any) => {
+    save: jest.fn((directory: string, data: Array<SubmittedChoice>) => {
       // eslint-disable-next-line
       mockLastSavedResult = data
     }),
     load: jest.fn(() => {
       // faked stored data
-      mockLastLoadedResult = []
+      mockLastLoadedResult = {}
 
       return mockLastLoadedResult
     })
@@ -74,7 +75,7 @@ const setup = async () => {
   let mockPromptInstance: any
   let mockRunPromise: any
   let mockReadyResolve: any
-  const promptReadyPromise = new Promise((resolve) => {
+  const promptReadyPromise = new Promise((resolve: any) => {
     mockReadyResolve = resolve
   })
   jest.mock('./prompt', () => {

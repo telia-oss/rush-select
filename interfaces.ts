@@ -57,6 +57,7 @@ export interface ScaleWithIndex {
 export interface ScaleWithName {
   name: string
   executionGroupIndex?: number
+  message?: string
 }
 
 export interface ChoiceInPrompt {
