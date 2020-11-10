@@ -1,6 +1,10 @@
 // let mockLastSavedResult = {}
 // let mockLastLoadedResult = {}
+import stripAnsi from 'strip-ansi'
 import { SavedEntries, SubmittedChoice } from './interfaces'
+
+const cleanupFunctionsToCall: Array<() => void> = []
+let mockLastPrinted: string
 
 const setup = async () => {
   global.console.log = jest.fn() // console.log are ignored in tests
@@ -86,7 +90,14 @@ const setup = async () => {
         mockPromptInstance = this
 
         this.stdout = {
-          write: jest.fn(),
+          write: jest.fn((text) => {
+            text = stripAnsi(text)
+
+            if (text !== '') {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              mockLastPrinted = text
+            }
+          }),
           removeListener: jest.fn()
         }
       }
@@ -119,6 +130,8 @@ const setup = async () => {
     return mockRunPromise
   }
 
+  cleanupFunctionsToCall.push(submitAndRun)
+
   return {
     promptInstance: mockPromptInstance,
     submitAndRun
@@ -129,6 +142,11 @@ describe('index', () => {
     jest.resetModules()
     jest.clearAllMocks()
   })
+
+  afterEach(async () => {
+    cleanupFunctionsToCall.splice(0).forEach((f) => f())
+  })
+
   test('submitting immediately should leave basically empty results', async () => {
     const { submitAndRun } = await setup()
 
@@ -173,9 +191,6 @@ describe('index', () => {
     promptInstance.onKeyPress('n', {})
     promptInstance.onKeyPress('d', {})
 
-    await promptInstance.down()
-    await promptInstance.right()
-    await promptInstance.down()
     await promptInstance.right()
 
     expect(promptInstance.visible).toHaveLength(1)
@@ -196,16 +211,16 @@ describe('index', () => {
     const result = await submitAndRun()
     expect(result).toEqual([
       {
+        packageName: 'rush build',
+        script: 'smart',
+        scriptExecutable: 'rush',
+        scriptCommand: []
+      },
+      {
         packageName: 'random-package',
         script: 'build',
         scriptExecutable: undefined,
         scriptCommand: undefined
-      },
-      {
-        packageName: 'rush build',
-        script: 'regular',
-        scriptExecutable: 'rush',
-        scriptCommand: []
       }
     ])
   })

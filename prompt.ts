@@ -133,18 +133,13 @@ class RushSelect extends ArrayPrompt {
     )
 
     this.filterText = ''
-    const keyPressHandler = (ch: string, key: KeyPressEvent) => {
-      this.onKeyPress(ch, key)
-    }
-    this.on('keypress', keyPressHandler)
-
+    
     const resizeHandler = () => {
       this.render()
     }
     this.stdout.on('resize', resizeHandler)
 
     this.on('close', () => {
-      this.removeListener('keypress', keyPressHandler)
       this.stdout.removeListener('resize', resizeHandler)
     })
   }
@@ -235,11 +230,13 @@ class RushSelect extends ArrayPrompt {
     )
   }
 
-  async dispatch(s: string, key: { name: string }): Promise<void> {
+  async dispatch(s: string, key: KeyPressEvent): Promise<void> {
     if (this.multiple) {
+      // not sure what multiple is, was here when I got here!
       return this[key.name] ? await this[key.name](s, key) : await super.dispatch(s, key)
+    } else {
+        this.onKeyPress(s, key)
     }
-    this.alert()
   }
 
   separator(): string {

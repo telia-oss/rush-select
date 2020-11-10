@@ -55,7 +55,7 @@ const createRushPrompt = async (
         scriptCommand: []
       },
       {
-        category: 'rush build (recommended: smart)',
+        category: 'how to build the packages prior to running the scripts',
         name: 'rush build',
         initial: 1,
         allowMultipleScripts: false,
