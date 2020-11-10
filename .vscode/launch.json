@@ -21,15 +21,51 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug the prompt",
+      "cwd": "${workspaceFolder}/mocks",
+      "program": "${workspaceFolder}/index.js",
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug the prompt in ts",
+      "cwd": "${workspaceFolder}/mocks",
+      "program": "${workspaceFolder}/index.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/*.js"],
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug the prompt in ts using mybusiness",
+      "cwd": "/home/whf962/Repos/mybusiness-fe",
+      "program": "${workspaceFolder}/index.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/*.js"],
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug the prompt using mybusiness",
+      "cwd": "/home/whf962/Repos/mybusiness-fe",
+      "program": "${workspaceFolder}/index.js",
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest",
       "runtimeExecutable": "node",
-      "cwd": "${fileDirname}",
-      "args": [
-        "./node_modules/jest/bin/jest.js",
-        "--runInBand",
-        "--no-cache",
-        "--watch"
-      ],
+      "smartStep": true,
+      "cwd": "${workspaceFolder}",
+      "args": ["./node_modules/jest/bin/jest.js", "--runInBand", "--no-cache", "--watch"],
       "internalConsoleOptions": "neverOpen",
       "console": "integratedTerminal"
     }
