@@ -1,6 +1,6 @@
 {
   "name": "@telia/rush-select",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "author": "william.bernting@teliacompany.com",
   "description": "A simple rush prompt to run multiple rush projects in one terminal.",
   "bugs": {
