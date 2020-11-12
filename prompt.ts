@@ -11,6 +11,7 @@ import {
   KeyPressEvent,
   ExecutionGroup
 } from './interfaces'
+import { padReplace } from './string-utils'
 
 class RushSelect extends ArrayPrompt {
   constructor(options = {}) {
@@ -133,7 +134,7 @@ class RushSelect extends ArrayPrompt {
     )
 
     this.filterText = ''
-    
+
     const resizeHandler = () => {
       this.render()
     }
@@ -162,6 +163,15 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
+  applyFilter(): void {
+    if (this.filterText !== '') {
+      this.visible = this.getFilteredChoices(this.filterText, this.choices)
+    } else {
+      // back to no filtering, restore the view
+      this.state.visible = undefined
+    }
+  }
+
   onKeyPress(ch: string, key: KeyPressEvent): void {
     const noFilterPreviouslyApplied = this.filterText === ''
     const wasDelete = this.filterText !== '' && key.action === 'delete'
@@ -183,11 +193,8 @@ class RushSelect extends ArrayPrompt {
       return
     }
 
-    if (this.filterText !== '') {
-      this.visible = this.getFilteredChoices(this.filterText, this.choices)
-    } else if (this.filterText === '' && !noFilterPreviouslyApplied) {
-      // back to no filtering, restore the view
-      this.state.visible = undefined
+    if (this.filterText !== '' || (this.filterText === '' && !noFilterPreviouslyApplied)) {
+      this.applyFilter()
     }
 
     // this.index = this.choices.findIndex((ch: ChoiceInPrompt) => ch === this.visible[0])
@@ -212,10 +219,6 @@ class RushSelect extends ArrayPrompt {
 
       ch.initial = ch.initial || 0
 
-      // if (!this.isValidScaleItem(this.scale[ch.initial], ch)) {
-      //   ch.initial = 0
-      // }
-
       ch.scaleIndex = ch.initial
       ch.scale = []
 
@@ -235,7 +238,7 @@ class RushSelect extends ArrayPrompt {
       // not sure what multiple is, was here when I got here!
       return this[key.name] ? await this[key.name](s, key) : await super.dispatch(s, key)
     } else {
-        this.onKeyPress(s, key)
+      this.onKeyPress(s, key)
     }
   }
 
@@ -253,6 +256,13 @@ class RushSelect extends ArrayPrompt {
           ? ch.scaleIndex === ignoreIndex
           : ch.initial === ignoreIndex || isNaN(ch.initial))
     ).length
+  }
+
+  getReindexedChoices(choices: Array<ChoiceInPrompt>): Array<ChoiceInPrompt> {
+    const result = [...choices]
+    result.forEach((ch: ChoiceInPrompt, index: number) => (ch.index = index))
+
+    return result
   }
 
   checkIfPackageScriptInstanceShouldBeAdded(
@@ -286,10 +296,20 @@ class RushSelect extends ArrayPrompt {
         scaleIndex: specialIndexes ? specialIndexes[0].index : 0
       }
 
-      choicesToModify.splice(choice.index + 1, 0, newChoiceWithIgnoreSelected)
+      const sorted = this.getSortedChoices(this.choices)
 
-      // fix index order of the re-arranged choices
-      choicesToModify.slice(choice.index + 2).forEach((ch: ChoiceInPrompt) => ch.index++)
+      let lastOccurrenceIndex = 0
+      sorted.forEach((ch, i) => {
+        if (ch.name === choice.name) {
+          lastOccurrenceIndex = i
+        }
+      })
+
+      sorted.splice(lastOccurrenceIndex + 1, 0, newChoiceWithIgnoreSelected)
+
+      this.choices = this.getReindexedChoices(sorted)
+
+      this.applyFilter()
     }
   }
 
@@ -336,18 +356,7 @@ class RushSelect extends ArrayPrompt {
     return this.render()
   }
 
-  checkIfPackageScriptInstanceShouldBeRemoved(
-    choice: ChoiceInPrompt,
-    choicesToModify: Array<ChoiceInPrompt>
-  ): void {
-    if (!choicesToModify) {
-      throw Error('bla')
-    }
-
-    if (!choice) {
-      throw Error('bla')
-    }
-
+  checkIfPackageScriptInstanceShouldBeRemoved(choice: ChoiceInPrompt): void {
     if (choice.allowMultipleScripts === false) {
       return
     }
@@ -355,25 +364,36 @@ class RushSelect extends ArrayPrompt {
     const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
     const wasActive = choice.scaleIndex === ignoreIndex
 
-    const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
+    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
       (ch: ChoiceInPrompt) => ch.name === choice.name
     ).length
 
-    // @ts-expect-error ts-migrate(2554) FIXME: Expected 1 arguments, but got 2.
-    const ignoresLeft = this.ignoresLeftFromChoiceScripts(choice, choicesToModify)
+    const ignoresLeft = this.ignoresLeftFromChoiceScripts(choice)
 
     if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
-      const matching = choicesToModify.filter((ch: ChoiceInPrompt) => ch.name === choice.name)
-      const isLastOccurrence = matching.slice(-1)[0].index === choice.index
+      const sorted = this.getSortedChoices(this.choices)
 
-      choicesToModify.splice(choice.index, 1)
+      let firstOccurrenceIndex: number | undefined
+      let lastOccurrenceIndex = 0
+      sorted.forEach((ch, i) => {
+        if (ch.name === choice.name && ch.scaleIndex === ignoreIndex) {
+          lastOccurrenceIndex = i
 
-      if (isLastOccurrence) {
-        // move cursor up one step since we're deleting where the cursor currently is
+          if (firstOccurrenceIndex === undefined) {
+            firstOccurrenceIndex = i
+          }
+        }
+      })
+
+      sorted.splice(lastOccurrenceIndex, 1)
+
+      this.choices = this.getReindexedChoices(sorted)
+
+      this.applyFilter()
+
+      if (firstOccurrenceIndex !== this.index) {
         this.index--
       }
-
-      choicesToModify.slice(choice.index).forEach((ch: ChoiceInPrompt) => ch.index--)
     }
   }
 
@@ -384,7 +404,7 @@ class RushSelect extends ArrayPrompt {
     try {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('left', choice)
 
-      this.checkIfPackageScriptInstanceShouldBeRemoved(choice, this.choices)
+      this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
       return this.render()
     } catch (e) {
       if (e.message !== 'no scale script item available to move to in that direction') {
@@ -588,9 +608,11 @@ class RushSelect extends ArrayPrompt {
 
     let suffixSymbol = ' '
     if (hasSiblingsInBothDirections) {
+      lines[0] = padReplace(lines[0])
       suffixSymbol = '│'
     } else if (hasSiblingAbove) {
       suffixSymbol = '└'
+      lines[0] = padReplace(lines[0])
     } else if (hasSiblingBelow) {
       suffixSymbol = '┌'
     }
