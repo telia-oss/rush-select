@@ -14,8 +14,11 @@ export const createChoices = (
 
   const choices = projects
     // some projects may not have a single script that is allowed to run, so filter them out
-    .filter((project: Project) =>
-      Object.keys(project.packageJson.scripts).some((scriptName) => scriptFilterFn(scriptName))
+    .filter(
+      (project: Project) =>
+        project.packageJson &&
+        project.packageJson.scripts &&
+        Object.keys(project.packageJson.scripts).some((scriptName) => scriptFilterFn(scriptName))
     )
     .reduce((total: Array<Choice>, project: Project) => {
       // keep track of the scripts that were found
