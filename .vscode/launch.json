@@ -52,8 +52,8 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug the prompt in ts using leeloo-sitewide",
-      "cwd": "/home/whf962/Repos/leeloo-sitewide",
+      "name": "Debug the prompt in ts using telia-fe",
+      "cwd": "/home/whf962/Repos/telia-fe",
       "program": "${workspaceFolder}/index.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/*.js"],
