@@ -9,11 +9,12 @@ import {
   ScaleWithIndex,
   ScaleWithName,
   KeyPressEvent,
-  ExecutionGroup
+  ExecutionGroup,
+  IRushSelect
 } from './interfaces'
 import { padReplace } from './string-utils'
 
-class RushSelect extends ArrayPrompt {
+class RushSelect extends ArrayPrompt implements IRushSelect {
   constructor(options = {}) {
     // @ts-expect-error ts-migrate(2339) FIXME: Property 'ignoreText' does not exist on type '{}'.
     options.ignoreText = options.ignoreText || 'ignore'
@@ -81,6 +82,10 @@ class RushSelect extends ArrayPrompt {
     })
 
     this.choices.forEach((choice: ChoiceInPrompt) => {
+      // selected scale indexes
+      choice.selected = choice.selected || []
+      choice.scaleItemsNotToAutoSelect = choice.scaleItemsNotToAutoSelect || []
+
       // ensure _some_ category exists
       choice.category = choice.category || this.options.uncategorizedText
 
@@ -94,6 +99,11 @@ class RushSelect extends ArrayPrompt {
       // increase initial by 1, since we added "ignore"
       if (choice.initial !== undefined) {
         choice.initial++
+      }
+
+      // move the current scaleIndex immediately to the selected scale indexes list
+      if (choice.initial !== undefined) {
+        this.ensureScaleItemIsSelected(choice, choice.initial)
       }
     })
 
@@ -163,6 +173,35 @@ class RushSelect extends ArrayPrompt {
     })
   }
 
+  get index(): number {
+    return super.index
+  }
+
+  set index(i: number) {
+    // const oldIndex = super.index
+    const oldSelected = this.selected
+
+    super.index = i
+
+    this.ensureScaleItemIsSelected(oldSelected, oldSelected.scaleIndex)
+  }
+
+  ensureScaleItemIsSelected(choice: ChoiceInPrompt, scaleIndex: number = choice.scaleIndex): void {
+    if (choice.scale && this.getChoiceAvailableScriptIndexes(choice)[0].index === scaleIndex) {
+      // it's just an ignore scale item, don't select it
+      return
+    }
+
+    if (
+      !choice.scaleItemsNotToAutoSelect.includes(scaleIndex) &&
+      !choice.selected.includes(scaleIndex)
+    ) {
+      choice.selected.push(scaleIndex)
+    }
+
+    this.render()
+  }
+
   applyFilter(): void {
     if (this.filterText !== '') {
       this.visible = this.getFilteredChoices(this.filterText, this.choices)
@@ -172,14 +211,21 @@ class RushSelect extends ArrayPrompt {
     }
   }
 
+  delete(): void {
+    if (this.filterText.length > 0) {
+      this.filterText = this.filterText.substring(0, this.filterText.length - 1)
+
+      this.applyFilter()
+
+      this.index = 0
+      this.render()
+    }
+  }
+
   onKeyPress(ch: string, key: KeyPressEvent): void {
     const noFilterPreviouslyApplied = this.filterText === ''
-    const wasDelete = this.filterText !== '' && key.action === 'delete'
 
-    if (wasDelete) {
-      this.filterText = this.filterText.substring(0, this.filterText.length - 1)
-    } else if (
-      key.action !== 'delete' &&
+    if (
       typeof ch === 'string' &&
       key.raw === key.sequence &&
       !key.ctrl &&
@@ -197,7 +243,6 @@ class RushSelect extends ArrayPrompt {
       this.applyFilter()
     }
 
-    // this.index = this.choices.findIndex((ch: ChoiceInPrompt) => ch === this.visible[0])
     this.index = 0
     this.render()
   }
@@ -227,10 +272,31 @@ class RushSelect extends ArrayPrompt {
       }
     }
     this.widths[0] = Math.min(this.widths[0], longest + 3)
+  }
 
-    this.choices.forEach((choice: ChoiceInPrompt) =>
-      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
-    )
+  async space(): Promise<void> {
+    this.toggleSelectionForScaleIndexInChoice(this.selected)
+  }
+
+  toggleSelectionForScaleIndexInChoice(choice: ChoiceInPrompt): void {
+    if (this.getChoiceAvailableScriptIndexes(choice)[0].index === choice.scaleIndex) {
+      // it's just an ignore scale item, don't select it
+      return
+    }
+
+    const index = choice.selected.indexOf(choice.scaleIndex)
+
+    if (index !== -1) {
+      choice.selected.splice(index, 1)
+    } else {
+      choice.selected.push(choice.scaleIndex)
+    }
+
+    if (!choice.scaleItemsNotToAutoSelect.includes(choice.scaleIndex)) {
+      choice.scaleItemsNotToAutoSelect.push(choice.scaleIndex)
+    }
+
+    this.render()
   }
 
   async dispatch(s: string, key: KeyPressEvent): Promise<void> {
@@ -263,54 +329,6 @@ class RushSelect extends ArrayPrompt {
     result.forEach((ch: ChoiceInPrompt, index: number) => (ch.index = index))
 
     return result
-  }
-
-  checkIfPackageScriptInstanceShouldBeAdded(
-    choice: ChoiceInPrompt,
-    choicesToModify: Array<ChoiceInPrompt>
-  ): void {
-    if (choice.allowMultipleScripts === false) {
-      return
-    }
-
-    let specialIndexes
-    if (choice.scale) {
-      specialIndexes = this.getChoiceAvailableScriptIndexes(choice)
-    }
-
-    const anyIgnoresLeft = this.ignoresLeftFromChoiceScripts(choice) > 0
-
-    const choiceCountDerivedFromCurrentPackage = choicesToModify.filter(
-      (ch: ChoiceInPrompt) => ch.name === choice.name
-    ).length
-
-    if (
-      !anyIgnoresLeft &&
-      choiceCountDerivedFromCurrentPackage < choice.availableScripts.length - 1
-    ) {
-      const newChoiceWithIgnoreSelected = {
-        ...choice,
-        message: choice.name,
-        index: choice.index + 1,
-        initial: specialIndexes ? specialIndexes[0].index : 0,
-        scaleIndex: specialIndexes ? specialIndexes[0].index : 0
-      }
-
-      const sorted = this.getSortedChoices(this.choices)
-
-      let lastOccurrenceIndex = 0
-      sorted.forEach((ch, i) => {
-        if (ch.name === choice.name) {
-          lastOccurrenceIndex = i
-        }
-      })
-
-      sorted.splice(lastOccurrenceIndex + 1, 0, newChoiceWithIgnoreSelected)
-
-      this.choices = this.getReindexedChoices(sorted)
-
-      this.applyFilter()
-    }
   }
 
   isValidScaleItem(scaleItemName: ScaleWithName, choice: ChoiceInPrompt): boolean {
@@ -346,7 +364,7 @@ class RushSelect extends ArrayPrompt {
     try {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('right', choice)
 
-      this.checkIfPackageScriptInstanceShouldBeAdded(choice, this.choices)
+      this.unfreezeScaleItemInChoice(choice)
     } catch (e) {
       if (e.message !== 'no scale script item available to move to in that direction') {
         throw e
@@ -354,47 +372,6 @@ class RushSelect extends ArrayPrompt {
     }
 
     return this.render()
-  }
-
-  checkIfPackageScriptInstanceShouldBeRemoved(choice: ChoiceInPrompt): void {
-    if (choice.allowMultipleScripts === false) {
-      return
-    }
-
-    const ignoreIndex = this.getChoiceAvailableScriptIndexes(choice)[0].index
-    const wasActive = choice.scaleIndex === ignoreIndex
-
-    const choiceCountDerivedFromCurrentPackage = this.choices.filter(
-      (ch: ChoiceInPrompt) => ch.name === choice.name
-    ).length
-
-    const ignoresLeft = this.ignoresLeftFromChoiceScripts(choice)
-
-    if (wasActive && choiceCountDerivedFromCurrentPackage > 1 && ignoresLeft > 1) {
-      const sorted = this.getSortedChoices(this.choices)
-
-      let firstOccurrenceIndex: number | undefined
-      let lastOccurrenceIndex = 0
-      sorted.forEach((ch, i) => {
-        if (ch.name === choice.name && ch.scaleIndex === ignoreIndex) {
-          lastOccurrenceIndex = i
-
-          if (firstOccurrenceIndex === undefined) {
-            firstOccurrenceIndex = i
-          }
-        }
-      })
-
-      sorted.splice(lastOccurrenceIndex, 1)
-
-      this.choices = this.getReindexedChoices(sorted)
-
-      this.applyFilter()
-
-      if (firstOccurrenceIndex !== this.index) {
-        this.index--
-      }
-    }
   }
 
   left(): Promise<void> {
@@ -404,7 +381,8 @@ class RushSelect extends ArrayPrompt {
     try {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('left', choice)
 
-      this.checkIfPackageScriptInstanceShouldBeRemoved(choice)
+      this.unfreezeScaleItemInChoice(choice)
+      
       return this.render()
     } catch (e) {
       if (e.message !== 'no scale script item available to move to in that direction') {
@@ -413,6 +391,14 @@ class RushSelect extends ArrayPrompt {
     }
 
     return this.render()
+  }
+
+  unfreezeScaleItemInChoice(choice: ChoiceInPrompt): void {
+    // "unfreeze" the auto selection of the choice scale item
+    const index = choice.scaleItemsNotToAutoSelect.indexOf(choice.scaleIndex)
+    if (index !== -1) {
+      choice.scaleItemsNotToAutoSelect.splice(index, 1)
+    }
   }
 
   indent(): string {
@@ -457,18 +443,34 @@ class RushSelect extends ArrayPrompt {
 
   scaleIndicator(choice: ChoiceInPrompt, item: ScaleWithIndex, choiceIndex: number): string {
     const scaleItem = this.scale[item.index]
-    const scaleItemIsSelected = choice.scaleIndex === item.index
+    const scaleItemIsUnderCursor = choice.scaleIndex === item.index
+    const scaleItemIsSelected = choice.selected.includes(item.index)
+
+    const isIgnoreScript =
+      this.getChoiceAvailableScriptIndexes(choice)[0].index === choice.scaleIndex
+
     const choiceIsFocused = this.index === choiceIndex
 
     if (!this.isScriptAvailable(scaleItem, choice)) {
       return ''
-    } else if (choiceIsFocused && scaleItemIsSelected) {
+    } else if (choiceIsFocused && scaleItemIsUnderCursor && scaleItemIsSelected) {
+      return this.styles.strong(this.styles.cyan(' =' + scaleItem.name + '= '))
+    } else if (choiceIsFocused && scaleItemIsUnderCursor && !scaleItemIsSelected) {
       return this.styles.strong(this.styles.danger(' [' + scaleItem.name + '] '))
-    } else if (scaleItemIsSelected) {
-      return this.styles.strong(this.styles.success(' [' + scaleItem.name + '] '))
+    } else if (!choiceIsFocused && scaleItemIsUnderCursor && scaleItemIsSelected) {
+      return this.styles.success('  ' + this.styles.underline(scaleItem.name) + '  ')
+    } else if (isIgnoreScript) {
+      return this.styles.default('  ' + scaleItem.name + '  ')
+    } else if (!choiceIsFocused && scaleItemIsUnderCursor && !scaleItemIsSelected) {
+      return '  ' + this.styles.underline(scaleItem.name) + '  '
+    } else if (!choiceIsFocused && !scaleItemIsUnderCursor && scaleItemIsSelected) {
+      return this.styles.success('  ' + scaleItem.name + '  ')
+    } else if (choiceIsFocused && !scaleItemIsUnderCursor && scaleItemIsSelected) {
+      return this.styles.success('  ' + scaleItem.name + '  ')
     } else if (choiceIsFocused) {
       return this.styles.danger('  ' + scaleItem.name + '  ')
     }
+
     return this.styles.default('  ' + scaleItem.name + '  ')
   }
 
@@ -768,9 +770,11 @@ class RushSelect extends ArrayPrompt {
     this.value = []
 
     for (const choice of this.choices) {
-      const script = choice.availableScripts[this.getChoiceSelectedScriptIndex(choice)]
+      const selectedScripts: Array<string> = this.getChoiceAvailableScriptIndexes(choice)
+        .filter(({ index }) => choice.selected.includes(index))
+        .map(({ index }) => choice.availableScripts[index])
 
-      if (script !== this.options.ignoreText) {
+      for (const script of selectedScripts) {
         this.value.push({
           packageName: choice.name,
           script,

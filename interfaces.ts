@@ -41,6 +41,10 @@ export interface SavedEntries {
   [keys: string]: Array<Package>
 }
 
+export interface IRushSelect {
+  ensureScaleItemIsSelected: (choice: ChoiceInPrompt) => void
+}
+
 export interface Choice {
   name: string
   category: string
@@ -64,10 +68,12 @@ export interface ChoiceInPrompt {
   allowMultipleScripts: boolean
   ansiLessName?: string
   scaleIndex: number
+  selected: Array<number>
   hint?: string
   name: string
   category: string
   availableScripts: string[]
+  scaleItemsNotToAutoSelect: Array<number>
   executionGroupIndex?: number
   initial: number
   normalized: boolean
