@@ -144,7 +144,8 @@ const runScripts = (submittedChoices: Array<SubmittedChoice>) => {
                 // @ts-expect-error project is not undefined, because we do filtering.
                 submittedChoice.project.projectFolder
               )
-            : getRushRootDir()
+            : getRushRootDir(),
+          env: { FORCE_COLOR: true }
         },
         getPrefix(submittedChoice.packageName, submittedChoice.script).padEnd(longestSequence, ' ')
       )
