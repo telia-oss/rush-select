@@ -100,11 +100,6 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
       if (choice.initial !== undefined) {
         choice.initial++
       }
-
-      // move the current scaleIndex immediately to the selected scale indexes list
-      if (choice.initial !== undefined) {
-        this.ensureScaleItemIsSelected(choice, choice.initial)
-      }
     })
 
     this.choices = this.getSortedChoices(this.choices)
@@ -187,6 +182,10 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
   }
 
   ensureScaleItemIsSelected(choice: ChoiceInPrompt, scaleIndex: number = choice.scaleIndex): void {
+    if (!choice.scale) {
+      // choice is not initialized yet
+    }
+
     if (choice.scale && this.getChoiceAvailableScriptIndexes(choice)[0].index === scaleIndex) {
       // it's just an ignore scale item, don't select it
       return
@@ -271,6 +270,14 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
         ch.scale.push({ index: i })
       }
     }
+
+    this.choices.forEach((choice: ChoiceInPrompt) => {
+      // move the current scaleIndex immediately to the selected scale indexes list
+      if (choice.initial !== undefined) {
+        this.ensureScaleItemIsSelected(choice, choice.initial)
+      }
+    })
+
     this.widths[0] = Math.min(this.widths[0], longest + 3)
   }
 
@@ -382,7 +389,7 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
       choice.scaleIndex = this.getNextIndexThatHasAvailableScript('left', choice)
 
       this.unfreezeScaleItemInChoice(choice)
-      
+
       return this.render()
     } catch (e) {
       if (e.message !== 'no scale script item available to move to in that direction') {
