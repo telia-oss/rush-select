@@ -1,5 +1,6 @@
 import path from 'path'
 import fs from 'fs'
+import { version } from './package.json'
 import { SubmittedChoice, Package, SavedEntries } from './interfaces'
 
 const answersFilePath = path.resolve(__dirname, '.cached-answers.json')
@@ -29,6 +30,8 @@ export const save = (rushRootDir: string, projectsToRun: Array<SubmittedChoice>)
 
   // add to existing results, if any
   preExistingData[rushRootDir] = projectsToRunByNameJsonFriendly
+
+  preExistingData._version = version
 
   fs.writeFileSync(answersFilePath, JSON.stringify(preExistingData, undefined, 4))
 }
