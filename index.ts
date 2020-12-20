@@ -6,7 +6,7 @@ import { spawnStreaming } from '@lerna/child-process'
 import child_process from 'child_process'
 import colors from 'ansi-colors'
 import RushSelect from './prompt'
-import { createChoices, setInitialValuesOnChoices } from './choice-generation'
+import { createChoices, applySelectedScriptsOnChoicesFromCache } from './choice-generation'
 import { save, load } from './save-load'
 import { getProjectsAndRespectivePackageJson, getRushRootDir } from './rush-utils'
 
@@ -48,7 +48,6 @@ const createRushPrompt = async (
       {
         category: 'pre-scripts (executes from top to bottom)',
         name: 'rush',
-        initial: 0,
         scriptNames: ['ignore', 'install', 'update'],
         scriptExecutable: 'rush',
         customSortText: '_',
@@ -57,7 +56,7 @@ const createRushPrompt = async (
       {
         category: 'how to build the packages prior to running the scripts',
         name: 'rush build',
-        initial: 1,
+        initial: 'smart',
         allowMultipleScripts: false,
         scriptNames: ['ignore', 'smart', 'regular', 'rebuild'],
         scriptExecutable: 'rush',
@@ -195,7 +194,7 @@ async function main() {
   do {
     const { choices, allScriptNames } = createChoices(projects, isScriptNameAllowed)
     const savedProjectScripts = load(getRushRootDir())
-    setInitialValuesOnChoices(choices, savedProjectScripts, isScriptNameAllowed)
+    applySelectedScriptsOnChoicesFromCache(choices, savedProjectScripts, isScriptNameAllowed)
 
     let scripts = null
 

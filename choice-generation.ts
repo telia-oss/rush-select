@@ -1,4 +1,4 @@
-import { Choice, Project, Package, CreatedChoicesAndScriptNames } from './interfaces'
+import { Choice, Project, Package, CreatedChoicesAndScriptNames, SavedEntry } from './interfaces'
 
 export const createChoices = (
   projects: Array<Project>,
@@ -47,37 +47,24 @@ export const createChoices = (
   }
 }
 
-export const setInitialValuesOnChoices = (
+export const applySelectedScriptsOnChoicesFromCache = (
   choices: Array<Choice>,
-  savedProjectScripts: Array<Package>,
+  savedProjectScripts: SavedEntry,
   scriptFilterFn: (param: string) => boolean
 ): void => {
   // set the initial values, if possible
-  const usedChoices: Array<Choice> = []
-  savedProjectScripts.forEach((savedProjectScript: Package) => {
-    let foundChoiceIndex = choices.findIndex(
+  savedProjectScripts.packages.forEach((savedProjectScript: Package) => {
+    const foundChoice = choices.find(
       (unusedChoice: Choice) => unusedChoice.name === savedProjectScript.packageName
     )
 
-    if (foundChoiceIndex !== -1) {
-      const choiceInUse = usedChoices.some(
-        (usedChoice) => usedChoice.initial === choices[foundChoiceIndex].initial
-      )
-
-      if (choiceInUse) {
-        // add another choice with the same project source, but different script
-        choices.splice(foundChoiceIndex, 0, {
-          ...choices[foundChoiceIndex]
-        })
-        foundChoiceIndex++
-      }
-
+    if (foundChoice) {
       if (!scriptFilterFn || scriptFilterFn(savedProjectScript.script)) {
-        choices[foundChoiceIndex].initial = savedProjectScript.script
+        if (!Array.isArray(foundChoice.initial)) {
+          foundChoice.initial = []
+        }
+        foundChoice.initial.push(savedProjectScript.script)
       }
-
-      // mark as used
-      usedChoices.push(choices[foundChoiceIndex])
     }
   })
 }

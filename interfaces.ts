@@ -24,7 +24,7 @@ export interface Argv {
 export interface ExecutionGroup {
   category: string
   name: string
-  initial: number
+  initial: Array<string>
   scriptNames: Array<string>
   allowMultipleScripts: boolean
   scriptExecutable: string
@@ -37,12 +37,17 @@ export interface Package {
   script: string
 }
 
+export interface SavedEntry {
+  packages: Array<Package>
+  cliVersion: string
+}
+
 export interface SavedEntries {
-  [keys: string]: Array<Package>
+  [keys: string]: SavedEntry
 }
 
 export interface IRushSelect {
-  ensureScaleItemIsSelected: (choice: ChoiceInPrompt) => void
+  toggleSelectionForScaleIndexInChoice: (choice: ChoiceInPrompt) => void
 }
 
 export interface Choice {
@@ -51,7 +56,7 @@ export interface Choice {
   availableScripts: string[]
   scriptExecutable: string
   scriptCommand: Array<string>
-  initial?: string | number
+  initial?: Array<string>
 }
 
 export interface ScaleWithIndex {
@@ -75,7 +80,7 @@ export interface ChoiceInPrompt {
   availableScripts: string[]
   scaleItemsNotToAutoSelect: Array<number>
   executionGroupIndex?: number
-  initial: number
+  initial: Array<string>
   normalized: boolean
   message: string
   value: string

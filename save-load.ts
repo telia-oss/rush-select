@@ -1,18 +1,18 @@
 import path from 'path'
 import fs from 'fs'
 import { version } from './package.json'
-import { SubmittedChoice, Package, SavedEntries } from './interfaces'
+import { SubmittedChoice, SavedEntries, SavedEntry } from './interfaces'
 
 const answersFilePath = path.resolve(__dirname, '.cached-answers.json')
 
 export const save = (rushRootDir: string, projectsToRun: Array<SubmittedChoice>): void => {
-  let preExistingData
+  let fileContents
   try {
-    preExistingData = JSON.parse(fs.readFileSync(answersFilePath).toString())
+    fileContents = JSON.parse(fs.readFileSync(answersFilePath).toString())
   } catch (e) {
     if (e.code === 'ENOENT') {
       // no cached answers, that's ok.
-      preExistingData = {}
+      fileContents = {}
     } else {
       // other unknown error, throw it
       throw e
@@ -29,18 +29,24 @@ export const save = (rushRootDir: string, projectsToRun: Array<SubmittedChoice>)
   })
 
   // add to existing results, if any
-  preExistingData[rushRootDir] = projectsToRunByNameJsonFriendly
+  fileContents[rushRootDir] = {};
+  fileContents[rushRootDir].packages = projectsToRunByNameJsonFriendly
+  fileContents[rushRootDir].cliVersion = version
 
-  preExistingData._version = version
-
-  fs.writeFileSync(answersFilePath, JSON.stringify(preExistingData, undefined, 4))
+  fs.writeFileSync(answersFilePath, JSON.stringify(fileContents, undefined, 4))
 }
 
-export const load = (rushRootDir: string): Array<Package> => {
+export const load = (rushRootDir: string): SavedEntry => {
   let cachedAnswers: SavedEntries = {}
 
   try {
     cachedAnswers = JSON.parse(fs.readFileSync(answersFilePath).toString())
+
+    if (cachedAnswers[rushRootDir] && cachedAnswers[rushRootDir].cliVersion !== version) {
+      // can't use this data because it's from a different version
+
+      cachedAnswers = {}
+    }
   } catch (e) {
     if (e.code === 'ENOENT') {
       // no cached answers, that's ok.
@@ -50,5 +56,8 @@ export const load = (rushRootDir: string): Array<Package> => {
     }
   }
 
-  return cachedAnswers[rushRootDir] || []
+  return cachedAnswers[rushRootDir] || {
+    packages: [],
+    cliVersion: version,
+  }
 }

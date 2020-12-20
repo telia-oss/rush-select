@@ -73,7 +73,7 @@ const setup = async () => {
       ],
       allScriptNames: ['build', 'build:prod', 'test']
     })),
-    setInitialValuesOnChoices: jest.fn()
+    applySelectedScriptsOnChoicesFromCache: jest.fn()
   }))
 
   let mockPromptInstance: any
