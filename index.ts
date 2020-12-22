@@ -3,6 +3,7 @@ import path from 'path'
 
 import { Choice, SubmittedChoice } from './interfaces'
 import { spawnStreaming } from '@lerna/child-process'
+import readline from 'readline'
 import child_process from 'child_process'
 import colors from 'ansi-colors'
 import RushSelect from './prompt'
@@ -215,16 +216,16 @@ async function main() {
 
     console.log('Starting pre-scripts')
 
-    let anyError
+    let nonZeroExit
 
     // run through the prescripts sequentially
     for (const preScript of scripts.pre) {
       const { error } = await awaitProcesses(runScripts([preScript]))
 
-      anyError = anyError || error
+      nonZeroExit = nonZeroExit || error
     }
 
-    if (!anyError) {
+    if (!nonZeroExit) {
       let rushBuildProcess
 
       // get unique package names that are set to run scripts
@@ -284,18 +285,27 @@ async function main() {
           const { error } = await awaitProcesses([rushBuildProcess])
 
           // weirdly, rush doesn't seem to exit with non-zero when builds fail..
-          anyError = anyError || error
+          nonZeroExit = nonZeroExit || error
         }
       }
     }
 
-    if (!anyError) {
-      console.log('Starting main scripts')
+    if (nonZeroExit) {
+      const rl = readline.createInterface(process.stdin, process.stdout)
 
-      await awaitProcesses(runScripts(scripts.main))
-    } else {
-      throw new Error('there was an error')
+      const continueDespiteErrors = await new Promise((resolve) => {
+        rl.question('There were errors/warnings, continue? [Y/n]: ', (answer) =>
+          resolve(/Yy\s/.test(answer))
+        )
+      })
+
+      if (!continueDespiteErrors) {
+        throw new Error('Exiting.')
+      }
     }
+
+    console.log('Starting main scripts')
+    await awaitProcesses(runScripts(scripts.main))
 
     // eslint-disable-next-line
   } while (true)
