@@ -197,55 +197,27 @@ describe('index', () => {
 
     expect(promptInstance.choices[promptInstance.index].name).toBe('mfe-package-b')
   })
-  test('removing script should make sure index stays within package name area', async () => {
+  test('navigation should be intact', async () => {
     const { promptInstance } = await setup()
 
     await promptInstance.down()
     await promptInstance.down()
     await promptInstance.down()
-
     expect(promptInstance.choices[promptInstance.index].name).toBe('browser-package')
-
-    // add some more script instances
-    await promptInstance.right()
     await promptInstance.down()
-    await promptInstance.right()
     await promptInstance.down()
-    await promptInstance.right()
-
-    // should still be selecting a package with the same name
+    expect(promptInstance.choices[promptInstance.index].name).toBe('mfe-package-b')
+    await promptInstance.up()
+    expect(promptInstance.choices[promptInstance.index].name).toBe('mfe-package-a')
+    await promptInstance.up()
     expect(promptInstance.choices[promptInstance.index].name).toBe('browser-package')
-
-    // remove scripts (from the bottom), which will remove script instance entries in the list
-    await promptInstance.left()
-    await promptInstance.up()
-    await promptInstance.left()
-
-    // should still be selecting a package with the same name
-    expect(promptInstance.choices[promptInstance.index].name).toBe('browser-package')
-
-    await promptInstance.up()
-    await promptInstance.left()
-
-    // should still be selecting a package with the same name
-    expect(promptInstance.choices[promptInstance.index].name).toBe('browser-package')
-
-    // add some more script instances
-    await promptInstance.right()
     await promptInstance.down()
-    await promptInstance.right()
     await promptInstance.down()
-    await promptInstance.right()
-
-    // remove scripts (from the top), which will remove script instance entries in the list
     await promptInstance.up()
-    await promptInstance.left()
     await promptInstance.up()
-    await promptInstance.left()
-
     expect(promptInstance.choices[promptInstance.index].name).toBe('browser-package')
   })
-  test('entries should not randomly disappear despite doing filtering', async () => {
+  test('filtering', async () => {
     const { promptInstance, runAndSubmit } = await setup()
 
     promptInstance.onKeyPress('r', {})
@@ -255,13 +227,13 @@ describe('index', () => {
 
     await promptInstance.right()
 
-    expect(promptInstance.visible).toHaveLength(2)
+    expect(promptInstance.visible).toHaveLength(1)
     expect(promptInstance.visible[0].name).toBe('random-package')
     expect(promptInstance.visible[0].scaleIndex).toBe(1)
 
     promptInstance.onKeyPress('', { action: 'delete' })
 
-    expect(promptInstance.visible).toHaveLength(2)
+    expect(promptInstance.visible).toHaveLength(1)
     expect(promptInstance.visible[0].name).toBe('random-package')
     expect(promptInstance.visible[0].scaleIndex).toBe(1)
 
