@@ -408,7 +408,7 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
     } else if (isIgnoreScript) {
       return this.styles.default('  ' + scaleItem.name + '  ')
     } else if (!choiceIsFocused && scaleItemIsUnderCursor && !scaleItemIsSelected) {
-      return '  ' + this.styles.underline(this.styles.success(scaleItem.name)) + '  '
+      return this.styles.success(' -' + scaleItem.name + '- ')
     } else if (!choiceIsFocused && !scaleItemIsUnderCursor && scaleItemIsSelected) {
       return this.styles.success(' =' + scaleItem.name + '= ')
     } else if (choiceIsFocused && !scaleItemIsUnderCursor && scaleItemIsSelected) {
