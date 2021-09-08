@@ -175,6 +175,10 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
     }
   }
 
+  number(n: string, key: KeyPressEvent): void {
+    this.onKeyPress(n, key)
+  }
+
   onKeyPress(ch: string, key: KeyPressEvent): void {
     const noFilterPreviouslyApplied = this.filterText === ''
 
