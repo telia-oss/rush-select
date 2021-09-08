@@ -654,9 +654,16 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
     filterText: string,
     choices: Array<ChoiceInPrompt> /*, defaultItem*/
   ): Array<ChoiceInPrompt> {
+    let choicesToFilter = choices
+
+    if (filterText.startsWith('!')) {
+      choicesToFilter = choices.filter((choice) => this.getChoiceSelectedScriptIndex(choice) > 0)
+      filterText = filterText.slice(1)
+    }
+
     return this.getSortedChoices(
       fuzzy
-        .filter(filterText || '', choices, {
+        .filter(filterText || '', choicesToFilter, {
           // fuzzy options
           // pre: ansiStyles.green.open,
           // post: ansiStyles.green.close,
