@@ -647,7 +647,7 @@ class RushSelect extends ArrayPrompt implements IRushSelect {
     if (this.filterText !== '') {
       return 'Filtering by: ' + this.filterText + '\n'
     }
-    return '[Type to filter -- up/down: change selected project -- left/right: switch scripts to run]\n'
+    return '[Type/backspace to filter, lead with ! to filter selected projects. Use up/down to change project, left/right to switch scripts to run. Space to select multiple project scripts]\n'
   }
 
   getFilteredChoices(
