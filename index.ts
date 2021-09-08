@@ -294,8 +294,8 @@ async function main() {
       const rl = readline.createInterface(process.stdin, process.stdout)
 
       const continueDespiteErrors = await new Promise((resolve) => {
-        rl.question('There were errors/warnings, continue? [Y/n]: ', (answer) =>
-          resolve(/Yy\s/.test(answer))
+        rl.question('There were warnings or errors during build, continue? [Y/n]: ', (answer) =>
+          resolve(/[Yy\s]/.test(answer))
         )
       })
 
