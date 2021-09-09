@@ -295,7 +295,7 @@ async function main() {
 
       const continueDespiteErrors = await new Promise((resolve) => {
         rl.question('There were warnings or errors during build, continue? [Y/n]: ', (answer) =>
-          resolve(/[Yy\s]/.test(answer))
+          resolve(/([Yy]|^$)/.test(answer))
         )
       })
 
